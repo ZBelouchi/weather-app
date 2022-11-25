@@ -1,0 +1,3 @@
+@mixin debug($color) {
+    outline: 2px solid $color;
+}
