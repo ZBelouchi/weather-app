@@ -21,17 +21,19 @@ export default function useDatetime(exact=false) {
     return [ 
         datetimeObject,
         datetimeObject.getTime(),
-        datetimeObject.toUTCString()
+        datetimeObject.toISOString(),
+        datetimeObject.getTimezoneOffset()
     ]
 }
 
 /* useDatetime - simplifies Date object by storing it in state and updating it
 
-    const { datetime, datetimeMs, datetimeString } = useDatetime(exact)
+    const { datetime, datetimeMs, datetimeString, datetimeOffset } = useDatetime(exact)
 
     datetime
     datetimeMs
     datetimeString
+    datetimeOffset
 
     NOTE: exact flag determines update frequency
         if false updates every second from mount but not in sync with real time
