@@ -1,39 +1,45 @@
 import { useEffect, useState } from 'react'
+import dayjs from 'dayjs'                   // requires dayjs library
+import Timezone from 'dayjs/plugin/timezone'
+import UTC from 'dayjs/plugin/utc'
+dayjs.extend(Timezone)
+dayjs.extend(UTC)
 
-export default function useDatetime(exact=false) {
-    const getCurrent = () => {
-        let current = new Date(Date.now())
-        return current
-    }
+export default function useDatetime(tmz=dayjs.tz.guess(), locale=null, exact=false) {
 
-    const [datetimeObject, setDatetimeObject] = useState(getCurrent())
+    const [datetime, setDatetime] = useState(dayjs().tz(tmz))
 
     useEffect(() => {
-        const interval = setInterval(() => setDatetimeObject(getCurrent()), 1000)
-        setDatetimeObject(getCurrent())
+        const interval = setInterval(() => setDatetime(dayjs().tz(tmz)), 1000)
 
-        
         return () => {
             clearInterval(interval)
         }
     }, exact ? undefined : [])
 
-    return [ 
-        datetimeObject,
-        datetimeObject.getTime(),
-        datetimeObject.toISOString(),
-        datetimeObject.getTimezoneOffset()
-    ]
+    return {
+        dt: datetime,                                   // DayJS object
+        dtMs: datetime.valueOf(),                       // Unix Timestamp
+        dtDate: datetime.format('MMM D YYYY'),          // Date string 'Jan 1 2022'
+        dtTime: datetime.format('H:mm:ss a'),           // Time String '10:30 am'
+        dtOffset: datetime.utcOffset()/60,              // Offset from UTC
+        dtTimezoneShift: function(tz) {                 // Day Object converted to another timezone
+            return dayjs.tz(datetime, tz)
+        }
+    }
 }
 
 /* useDatetime - simplifies Date object by storing it in state and updating it
 
-    const { datetime, datetimeMs, datetimeString, datetimeOffset } = useDatetime(exact)
+    const {dt, dtMs, dtDate, dtTime, dtOffset, dtTimezoneShift} = useDatetime()
 
-    datetime
-    datetimeMs
-    datetimeString
-    datetimeOffset
+    dt
+    dtMs
+    dtDate
+    dtTime
+    dtOffset
+
+    dtTimezoneShift('Europe/Berlin')
 
     NOTE: exact flag determines update frequency
         if false updates every second from mount but not in sync with real time

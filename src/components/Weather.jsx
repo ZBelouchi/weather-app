@@ -1,89 +1,18 @@
-import React, { useEffect } from 'react'
-import { useState } from 'react'
-import useFetch from '../hooks/useFetch'
+import React, { useEffect, useState } from 'react'
 import useDatetime from '../hooks/useDatetime'
 import { useLocation } from 'react-router-dom'
+
+import dayjs from 'dayjs'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
+dayjs.extend(customParseFormat)
 
 // import Image from './Image'
 import IMAGES from '../assets/images'
 
-function WeatherOLD() {
-    const [weatherData, setWeatherData] = useState({
-        location: {
-            lat: "",
-            lon: "",
-            name: ""
-        },
-        temperature: {
-            current: 0,
-            high: 0,
-            low: 0
-        },
-        condition: 0,
-        wind: {
-            speed: "",
-            direction: ""
-        },
-        time: {
-            lastUpdated: 0,
-            sunrise: 0,
-            sunset: 0,
-            timeIcon: () => {}
-        }
-    })
-    
-    
-    
-    
-    useEffect(() => {
-        fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${location.state.lat.toString()}&longitude=${location.state.lon.toString()}&hourly=temperature_2m,weathercode&daily=weathercode,temperature_2m_max,temperature_2m_min,sunrise,sunset&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=ms&precipitation_unit=inch&timezone=America%2FNew_York`,
-            {method: 'GET'}
-        )
-        .then(response => response.json())
-        .then(json => {
-            const twentyFourTemp = json.hourly.temperature_2m.slice(0, 24)
-            
-            setWeatherData({
-                location: {
-                    lat: location.state.lat,
-                    lon: location.state.lon,
-                    name: `${location.state.name}, ${location.state.area}`
-                },
-                temperature: {
-                    current: json.current_weather.temperature,
-                    high: Math.max(...twentyFourTemp),
-                    low: Math.min(...twentyFourTemp)
-                },
-                condition: json.current_weather.weathercode,
-                wind: {
-                    speed: json.current_weather.windspeed,
-                    direction: json.current_weather.winddirection
-                },
-                time: {
-                    lastUpdated: datetimeString,
-                    sunrise: json.daily.sunrise[0],
-                    sunset: json.daily.sunset[0],
-                    timeIcon: () => {
-                        let now = new Date(Date.now()) 
-
-                        let sunrise = new Date(json.daily.sunrise[0])
-                        let sunset = new Date(json.daily.sunset[0])
-                        // 'this' doesn't work here for some reason :/
-
-                        return now > sunrise && now < sunset ? IMAGES.sun : IMAGES.moon                        
-                    }
-                }
-            })
-        })
-        .catch(err => console.log(err))
-    }, [datetime])
-}
-
 export default function Weather() {
+    const {dt, dtMs, dtDate, dtTime, dtOffset, dtTimezoneShift} = useDatetime()
     const locationState = useLocation()
-    const [datetime, datetimeMs, datetimeString, datetimeOffset]  = useDatetime()
-    const [weatherData, setWeatherData] = useState()
+    const [weatherData, setWeatherData] = useState(null)
 
     let args = [
         `latitude=${locationState.state.lat.toString()}`,
@@ -98,74 +27,107 @@ export default function Weather() {
         `timezone=auto`,
     ]
     let apiPath = "https://api.open-meteo.com/v1/forecast?" + args.join("&")
-
     useEffect(() => {
         fetch(apiPath, {method: 'GET'})
             .then(response => response.json())
             .then(json => {
-                console.log(json)
+                // console.log(json)
 
-                let sunrise = new Date(json.daily.sunrise[0])
-                let sunset = new Date(json.daily.sunset[0])
-                // TODO get accurate local time, not just hourly approximation
-                let local = new Date(Date.parse(json.current_weather.time))
-
-                let hourlyTemps = json.hourly.temperature_2m.map((temp, index) => {
-                // parse data and make list of all hours with time and temp
-                    return [new Date(json.hourly.time[index]), temp]
-                }).filter((item) => {
-                // filter out times that aren't for current day
-                    return item[0].toDateString() === local.toDateString()
-                }).map((item) => {
-                // reduce items to only temp now that time isn't needed
-                    return item[1]
+                let sunrise = dayjs(json.daily.sunrise[0], 'YYYY-MM-DDTHH:mm')
+                let sunset = dayjs(json.daily.sunset[0], 'YYYY-MM-DDTHH:mm')
+                let local = dtTimezoneShift(json.timezone)
+                
+                let dailyData = json.daily.time.map((day, index) => {
+                // parse data into an array of daily weather objects
+                    return {
+                        time: dayjs(day, 'YYYY-MM-DD'),
+                        condition: json.daily.weathercode[index],
+                        temperature: {
+                            high: json.daily.temperature_2m_min[index],
+                            low: json.daily.temperature_2m_max[index]
+                        },
+                        isNighttime: false,
+                        sunrise: json.daily.sunrise[index],
+                        sunset: json.daily.sunset[index]
+                    }
                 })
 
+                let hourlyData = json.hourly.time.map((hour, index) => {
+                // parse data into an array of hourly weather objects
+                    return {
+                        time: dayjs(hour, 'YYYY-MM-DDTHH:mm'),
+                        condition: json.hourly.weathercode[index],
+                        temperature: json.hourly.temperature_2m[index],
+                        isNighttime: true // LEFT OFF: getting this flag to work; it needs to compare the hourly time to the nearest sunset, problem is it only has one and so after the daily sunset date it stops working
+                    }
+                })
+                let hourlyForecast = hourlyData.filter((item) => {
+                    // cut list to only x hours after present
+                    return item.time > local
+                }).slice(0, 12)
+                
+                let hourlyTemps = hourlyData.filter((item) => {
+                    // filter out times that aren't for current day
+                    return item.time.format('YYYY-MM-DD') === local.format('YYYY-MM-DD')    //NOTE: isSame method decided it didn't wanna be accurate to so I'm brute forcing it; clean up later
+                }).map((item) => {
+                    // reduce items to only temp now that time isn't needed
+                    return item.temperature
+                })
+                
                 setWeatherData({
-                    location: {
-                        primary: locationState.state.primary,
-                        secondary: locationState.state.secondary,
-                        country: locationState.state.country
+                    current: {
+                        location: {
+                            primary: locationState.state.primary,
+                            secondary: locationState.state.secondary,
+                            country: locationState.state.country
+                        },
+                        condition: json.current_weather.weathercode,
+                        temperature: {
+                            current: json.current_weather.temperature,
+                            high: Math.max(...hourlyTemps),
+                            low: Math.min(...hourlyTemps)
+                        },
+                        wind: json.current_weather.windspeed,
+                        sunrise: sunrise,
+                        sunset: sunset,
+                        isNighttime: local < sunrise,
+                        localTime: local
                     },
-                    condition: json.current_weather.weathercode,
-                    temperature: {
-                        current: json.current_weather.temperature,
-                        high: Math.max(...hourlyTemps),
-                        low: Math.min(...hourlyTemps)
-                    },
-                    wind: json.current_weather.windspeed,
-                    sunrise: sunrise,
-                    sunset: sunset,
-                    isNighttime: local < sunrise,
-                    localTime: local
+                    hourly: hourlyForecast,
+                    daily: dailyData
                 })
             })
             .catch(err => console.log(err))
-    }, [datetime])
+    }, [dt])
 
     // temporary fix to prevent it from trying to render with undefined data
     // works but I should find a more elegant solution later
     try {
-        weatherData.location
+        weatherData.current
     } catch {
         return
     }
 
     return (
         <div className="weather">
-            <WeatherBox 
-                location={weatherData.location} 
-                condition={weatherData.condition} 
-                isNighttime={weatherData.isNighttime}
-                temperature={weatherData.temperature} 
-                wind={weatherData.wind}
-            />
+            <WeatherBox data={weatherData.current}/>
+            <div className="row">
+                <div className="weather__hourly">
+                    <h2>Hourly</h2>
+                    {weatherData.hourly.map((hour) => <WeatherBoxMini data={hour}/>)}
+                </div>
+                <div className="weather__daily">
+                    <h2>Daily</h2>
+                    {weatherData.daily.map((day) => <WeatherBoxMini data={day}/>)}
+                </div>
+            </div>
         </div>
     )
 }
 
-function WeatherBox({location, condition, isNighttime, temperature, wind}) {
-    
+function WeatherBox({data}) {
+    const {location, condition, isNighttime, temperature, wind} = data
+
     return (
         <div className="weather__box">
             <div className="weather__stat weather__stat--location">
@@ -192,8 +154,27 @@ function WeatherBox({location, condition, isNighttime, temperature, wind}) {
     )
 }
 
+function WeatherBoxMini({data}) {
+    const {time, condition, temperature, isNighttime} = data
 
-function Condition({code, isNighttime}) {
+    return (
+        <div className="weather__box weather__box--mini">
+            <div className="weather__stat weather__stat--condition">
+                <Condition code={condition} isNighttime={isNighttime} description={false}/>
+            </div>
+            <div className="weather__stat weather__stat--temperature">
+                {
+                    typeof temperature == "number" ? 
+                        <p>{temperature} °F</p> : 
+                        <p>{temperature.high} / {temperature.low} °F</p>
+                }
+            </div>
+            <p>{time.toString()} {isNighttime.toString()}</p>
+        </div>
+    )
+}
+
+function Condition({code, isNighttime, description=true}) {
     const CONDITIONS = {
         0: {
             description: "Clear Sky",
@@ -317,35 +298,7 @@ function Condition({code, isNighttime}) {
                     CONDITIONS[code].iconLayers.map((layer) => {return <img src={layer} alt="weather-icon-layer"  className='weather__icon--layer'/>})
                 }
             </div>
-            <p>{CONDITIONS[code].description || `Invalid Weather Code '${code}'`}</p>
+            {description && <p>{CONDITIONS[code].description || `Invalid Weather Code '${code}'`}</p>}
         </>
     )
 }
-
-
-
-
-
-
-/* location */
-{/* <p>Location: {weatherData.location.name}</p>
-<p>Latitude: {weatherData.location.lat}</p>
-<p>Longitude: {weatherData.location.lon}</p>
-<br/> */}
-
-/* temperature */
-{/* <p>Temp: {weatherData.temperature.current}</p> */}
-/* temp high/low */
-{/* <p>High/Low: {weatherData.temperature.high} / {weatherData.temperature.low}</p>
-<br/> */}
-
-/* date/time */
-{/* <p>Current Time: {datetimeString}</p> */}
-/* <p>Last Updated: {weatherData.time.lastUpdated}</p> */
-{/* <br/> */}
-
-{/* <Condition code={weatherData.condition} time={weatherData.time.timeIcon()}/> */}
-{/* <br/> */}
-
-/* Wind Speed */
-{/* <p>Wind: {weatherData.wind.speed} {weatherData.wind.direction}</p> */}
