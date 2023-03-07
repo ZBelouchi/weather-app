@@ -7,74 +7,172 @@
     box-sizing: border-box
     margin: 0
 html
-    font-size: 25px
+    font-size: 1rem
     color: white
     // font-family: $normal
-    background: #151418
-    
+    background: $blue
 img
     max-width: 100%  
 
-.container
-    width: 80%
-    max-width: 1200px
-    margin: auto
-    @include debug(white)
+ul
+    list-style: none
+    padding: 0
+li
 
-// .location-select
-.search
-    &__list
-        @include debug(lime)
-    &__item
-        @include debug(blue)
-        padding: 0.5em
-        display: flex
-        justify-content: space-around
-        *
-            width: 10em
-        &:hover
-            background-color: navy
-            
-
-.weather
-    padding: 1em
-    &__box
-        padding: 1em
-        @include debug(blue)
-        font-size: 0.8rem
-        width: 14em
-        &--mini
-            @include debug(gray)
-            font-size: 0.5rem
-    &__hourly
-        @include debug(teal)
-    &__daily
-        @include debug(tan)
-    &__stat
-        padding: 0.5em
+// for testing visuals of breakpoints
+// @include xs
+    // .fake
+    //     width: 100%
+@include sm
+    .fake
         width: 100%
-        &--location
-            // @include debug(magenta)
-        &--condition
-            // @include debug(cyan)
-            img
-                @include debug(pink)
-        &--temperature
-            font-size: .8em
-            // @include debug(yellow)
-        &--wind
-            // @include debug(lime)
+@include md
+    .fake
+        width: 100%
+@include lg
+    .fake
+        width: 100%
+@include xl
+    .fake
+        width: 100%
 
+
+// Universal
+.container
+    width: 90%
+    max-width: 1100px
+    margin: auto
+    background: $darkblue
+    padding: 1em
+
+// LocationSelect
+.location
+    &__title
+.search
+    &__label
+    &__box
+.results
+    &__item     // likely temproary
+    &__value
+        &--name
+        &--area
+        &--country
+        &--time
+
+// Weather
+.weather
+    &__header
+    &__group
+        border: 0.3em outset $blue
+        border-radius: 8px
+        padding: 1em
+        overflow-x: scroll
+        em
+        &--daily
+        &--hourly
+    &__list
+    &__box
+        text-align: center
+        border-radius: 8px
+        // width: 
+        padding: 1em
+        &--main
+            border: 0.3em outset $blue
+        &--aux
+            font-size: 0.8rem
+    &__location
+        // @include debug(gray)
+        margin: 0 0 1em 0
+    &__stats
+        // @include debug(gray)
+    &__condition
+        // @include debug(gray)
     &__icon
-        // @include debug(magenta)
         position: relative
         width: 5em
         height: 5em
+        margin: 0.5em
         &--layer
-            // @include debug(green)
-            position: absolute
             width: 100%
             height: 100%
-
-.row
+            @include center
+.flex
     display: flex
+    justify-content: space-around
+@include md 
+    .row
+        display: flex
+    .column
+        display: flex
+        flex-direction: column
+.col
+    width: 100%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// .container
+//     width: 80%
+//     max-width: 1200px
+//     margin: auto
+//     @include debug(white)
+
+// // .location-select
+// .search
+//     &__list
+//         @include debug(lime)
+//     &__item
+//         @include debug(blue)
+//         padding: 0.5em
+//         display: flex
+//         justify-content: space-around
+//         *
+//             width: 10em
+//         &:hover
+//             background-color: navy
+            
+
+// .weather
+//     padding: 1em
+//     &__box
+//         padding: 1em
+//         @include debug(blue)
+//         font-size: 0.8rem
+//         width: 14em
+//         &--mini
+//             @include debug(gray)
+//             font-size: 0.5rem
+//     &__hourly
+//         @include debug(teal)
+//     &__daily
+//         @include debug(tan)
+//     &__stat
+//         padding: 0.5em
+//         width: 100%
+//         &--location
+//         &--condition
+//             img
+//                 @include debug(pink)
+//         &--temperature
+//             font-size: .8em
+//         &--wind
+
+//     &__icon
+//         position: relative
+//         width: 5em
+//         height: 5em
+//         &--layer
+//             position: absolute
+//             width: 100%
+//             height: 100%
+

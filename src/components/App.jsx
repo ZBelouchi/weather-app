@@ -4,7 +4,7 @@ import Weather from './Weather'
 
 export default function App() {
     return (
-        <div className="container">
+        <main>
             <Router>
                 <Routes>
                     <Route path='/' element={<LocationSelect />} />
@@ -12,6 +12,6 @@ export default function App() {
                     <Route path='*' element={<p>Error 404</p>} />
                 </Routes>
             </Router>
-        </div>
+        </main>
     )
 }

@@ -2,8 +2,14 @@ import { useEffect, useState } from 'react'
 import dayjs from 'dayjs'                   // requires dayjs library
 import Timezone from 'dayjs/plugin/timezone'
 import UTC from 'dayjs/plugin/utc'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
+// import dayOfYear from 'dayjs/plugin/dayOfYear'
+import isBetween from 'dayjs/plugin/isBetween'
 dayjs.extend(Timezone)
 dayjs.extend(UTC)
+dayjs.extend(customParseFormat)
+// dayjs.extend(dayOfYear)
+dayjs.extend(isBetween)
 
 export default function useDatetime(tmz=dayjs.tz.guess(), locale=null, exact=false) {
 
@@ -18,13 +24,20 @@ export default function useDatetime(tmz=dayjs.tz.guess(), locale=null, exact=fal
     }, exact ? undefined : [])
 
     return {
-        dt: datetime,                                   // DayJS object
-        dtMs: datetime.valueOf(),                       // Unix Timestamp
-        dtDate: datetime.format('MMM D YYYY'),          // Date string 'Jan 1 2022'
-        dtTime: datetime.format('H:mm:ss a'),           // Time String '10:30 am'
-        dtOffset: datetime.utcOffset()/60,              // Offset from UTC
-        dtTimezoneShift: function(tz) {                 // Day Object converted to another timezone
+        dt: datetime,                                    // DayJS object
+        dtMs: datetime.valueOf(),                        // Unix Timestamp
+        dtDate: datetime.format('MMM D YYYY'),           // Date string 'Jan 1 2022'
+        dtTime: datetime.format('H:mm:ss a'),            // Time String '10:30 am'
+        dtOffset: datetime.utcOffset()/60,               // Offset from UTC
+        dtTimezoneShift: function(tz, overwrite=false) { // Day Object converted to another timezone
+            if (overwrite) {
+                setDatetime(dayjs.tz(datetime, tz))
+            }
             return dayjs.tz(datetime, tz)
+            // return dayjs(dayjs.tz(datetime, tz).format('YYYY-MM-DDTHH:mm'), 'YYYY-MM-DDTHH:mm')
+        },
+        dtFormat: function(str) {
+            return dayjs
         }
     }
 }
