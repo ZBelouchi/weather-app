@@ -3,58 +3,83 @@ import dayjs from 'dayjs'                   // requires dayjs library
 import Timezone from 'dayjs/plugin/timezone'
 import UTC from 'dayjs/plugin/utc'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
-// import dayOfYear from 'dayjs/plugin/dayOfYear'
 import isBetween from 'dayjs/plugin/isBetween'
+import localizedFormat from 'dayjs/plugin/localizedFormat'
 dayjs.extend(Timezone)
 dayjs.extend(UTC)
 dayjs.extend(customParseFormat)
-// dayjs.extend(dayOfYear)
 dayjs.extend(isBetween)
+dayjs.extend(localizedFormat)
 
-export default function useDatetime(tmz=dayjs.tz.guess(), locale=null, exact=false) {
-
-    const [datetime, setDatetime] = useState(dayjs().tz(tmz))
+export default function useDatetime(tmz, exact) {
+    const [timezone, setTimezone] = useState(tmz ?? dayjs.tz.guess())
+    const [datetime, setDatetime] = useState(dayjs().tz())
 
     useEffect(() => {
-        const interval = setInterval(() => setDatetime(dayjs().tz(tmz)), 1000)
+        dayjs.tz.setDefault(timezone)
+    }, [])
 
+    useEffect(() => {
+        const interval = setInterval(
+            () => {
+                setDatetime(dayjs().tz())
+            }, 
+            1000
+        )
         return () => {
             clearInterval(interval)
         }
-    }, exact ? undefined : [])
+    }, (exact ?? false) ? undefined : [])
 
+    function dtChangeTz(tz=timezone) {
+        dayjs.tz.setDefault(tz)
+        setTimezone(tz)
+        setDatetime(dayjs().tz())
+    }
+
+    function dtFormat(fstring='LLLL') {
+        let d = datetime.format(fstring)
+        return d
+    }
+
+    console.log(timezone);
     return {
-        dt: datetime,                                    // DayJS object
-        dtMs: datetime.valueOf(),                        // Unix Timestamp
-        dtDate: datetime.format('MMM D YYYY'),           // Date string 'Jan 1 2022'
-        dtTime: datetime.format('H:mm:ss a'),            // Time String '10:30 am'
-        dtOffset: datetime.utcOffset()/60,               // Offset from UTC
-        dtTimezoneShift: function(tz, overwrite=false) { // Day Object converted to another timezone
-            if (overwrite) {
-                setDatetime(dayjs.tz(datetime, tz))
-            }
-            return dayjs.tz(datetime, tz)
-            // return dayjs(dayjs.tz(datetime, tz).format('YYYY-MM-DDTHH:mm'), 'YYYY-MM-DDTHH:mm')
-        },
-        dtFormat: function(str) {
-            return dayjs
-        }
+        dt: datetime,                            // datetime object form
+        dtUnix: datetime.valueOf(),              // unix timestamp form (seconds from epoch)
+        dtFormat: dtFormat,                      // custom formatted string (default LLLL) (for use of extended formatting libraries without importing them)
+        dtDate: datetime.format('YYYY-MM-DD'),   // formatted string for date
+        dtTime: datetime.format('h:mm:ss a'),    // formatted string for time
+        dtISO: datetime.toISOString(),           // formatted string in ISO format
+        dtTz: timezone,                          // timezone
+        dtOffset: datetime.utcOffset()/60,       // timezone offset from UTC
+        dtChangeTz: dtChangeTz                   // convert to different timezone (default resets to machine timezone)
     }
 }
 
 /* useDatetime - simplifies Date object by storing it in state and updating it
 
-    const {dt, dtMs, dtDate, dtTime, dtOffset, dtTimezoneShift} = useDatetime()
+    const {dt, dtUnix, dtFormat, dtDate, dtTime, dtISO, dtTz, dtOffset, dtChangeTz} = useDatetime()
 
+    // timezone defaults to machine time, to change add a timezone value
+    const {dt} = useDatetime('Europe/Berlin')
+    // exact flag determines the update rate, if false it updates every second, if true every millisecond (will take more resources)
+    const {dt} = useDatetime(null, true)    //NOTE: tmz must be filled in before exact (even if null)
+
+    // real-time values
     dt
-    dtMs
-    dtDate
-    dtTime
+    dtUnix
+    dtTz
     dtOffset
 
-    dtTimezoneShift('Europe/Berlin')
+    // readable strings updated in real time
+    dtDate
+    dtTime
+    dtISO
+    dtFormat('YYYY M D')    // including method for format strings
+    dtFormat('lll')         // allows use of localized strings without needing to extend the library
 
-    NOTE: exact flag determines update frequency
-        if false updates every second from mount but not in sync with real time
-        IF true updates every millisecond, will be accurate but take more resources
+    // change the timezone
+    dtTz                            // 'America/New_York'
+    dtChangeTz('Europe/Berlin')
+    dtTz                            // 'Europe/Berlin'
 */

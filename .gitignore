@@ -26,3 +26,7 @@ dist-ssr
 # temp
 _debug.scss
 plan.txt
+# old
+LocationSelect.jsx
+Weather.jsx
+
