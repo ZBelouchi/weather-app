@@ -9,19 +9,15 @@ import useAsyncCached from "../hooks/useAsyncCached"
 import Tabs from "./Tabs"
 import Modal from "./Modal"
 
-//TODO: add current date's hourly/daily data groups for averaging certain stats not provided by API
-//TODO: format all incoming data from json for use by main and group component
+//TODO: format and apply data for new units (wind, uv, etc.)
 //TODO: make full UI for weather/group components
 
 //TODO: filter out invalid locations from location search (e.g. no time zone or coordinates)
-//TODO: adding new location shifts active tab to new location
-//TODO: make template wrapper component for components using cached data from a useAsync hook (what Weather and WeatherGroup do to prevent stutters)
 //TODO: add current location selector (machine location)
 //TODO: make search a deferred value to prevent excessive API calls
 //TODO: possibly refine location data checks using regex
-//TODO: fix hourlyTemps to use isSame if possible (didn't work before, might be able to fix it this time)
 //TODO: figure out how weather data is initially returning undefined while also not loading, then returning the actual data a moment later and fix it
-
+//TODO: add 'esc' to close functionality to modal
 
 
 export default function App() {
@@ -29,7 +25,7 @@ export default function App() {
     const [modifyModal, toggleModifyModal] = useToggle(false)
     const [addModal, toggleAddModal] = useToggle(false)
     const [activeMain, setActiveMain] = useState(0)
-    const [activeGroup, setActiveGroup] = useState('Daily')
+    const imperativeMain = useRef()
     const {array: locationData, set: setLocationData, update: updateLocationData, remove: removeLocationData, push: pushLocationData} = useArray([
         {
             lat: 39.44034,
@@ -60,7 +56,6 @@ export default function App() {
 
     const weatherData = useAsyncCached(
         () => {
-            console.log("made call to forecast API");
             if (JSON.stringify(locationData) === "[{},{},{}]") {
                 return Promise.reject(new Error(`Coordinates not available in slot ${activeMain}`))
                 // console.error(`Coordinates not available in slot ${activeMain}`)
@@ -78,49 +73,36 @@ export default function App() {
                 `windspeed_unit=mph`,
                 `precipitation_unit=inch`,
                 `timezone=auto`,
-                // `start_date=${dt.subtract(1, "days").format('YYYY-MM-DD')}`,
-                // `end_date=${dt.add(6, "days").format('YYYY-MM-DD')}`,
+                `start_date=${dt.format('YYYY-MM-DD')}`,
+                `end_date=${dt.add(7, "days").format('YYYY-MM-DD')}`,
             ].join("&")
+            //LEFT OFF: getting current date group data available while keeping the old future forecast in tact
             
             return fetch(url, {method: 'GET'})
                 .then(res => res.json())
                 .then(json => {
-                    console.log(json)
+                    console.log("made call to forecast API");
+                    // console.log(json)
 
                     let hourlyData = json.hourly.time.map((hour, index) => {
                         return {
-                            time: hour.slice(11, 16),
-                            timeObj: dayjs(hour, 'YYYY-MM-DDTHH:mm'),
+                            hour: hour.slice(11, 16),
+                            dtObj: dayjs(hour, 'YYYY-MM-DDTHH:mm').tz(dtTz, true),
                             condition: json.hourly.weathercode[index],
                             temperature: json.hourly.temperature_2m[index]
                         }
                     })
-                    console.log(hourlyData);
 
-                    let hourlyForecast = hourlyData.filter((item) => {
-                        // cut list to only x hours after present
-                        return item.timeObj.isAfter(dt)
-                    }).slice(0,24)
-                    // // filtered to only hours of current day
-                    let hourlyTemps = hourlyData.filter((item) => {
-                        // filter out times that aren't for current day
-                        return item.timeObj.format('YYYY-MM-DD') === dtDate    //NOTE: isSame method decided it didn't wanna be accurate to so I'm brute forcing it; clean up later
-                    }).map((item) => {
-                        // reduce items to only temp now that time isn't needed
-                        return item.temperature
-                    })
+                    // get high and low temperatures 
+                    let hourlyTemps = hourlyData.slice(0, 24).map((hour) => {return hour.temperature})
+                    let [tempMax, tempMin] = [Math.max(...hourlyTemps), Math.min(...hourlyTemps)]
 
-
-                    let hourly = hourlyData
-
-
-
-
-                    // console.log(hourlyForecast);
+                    // get wind direction from degrees
                     let degree = json.current_weather.winddirection
                     let directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
                     let index = Math.round(((degree %= 360) < 0 ? degree + 360 : degree) / 45) % 8;
                     let windDirection = directions[index];
+
                     // return {main: json}
                     let wd = {
                         main: {
@@ -128,8 +110,8 @@ export default function App() {
                             condition: json.current_weather.weathercode,
                             temperature: {
                                 current: json.current_weather.temperature,
-                                high: Math.max(...hourlyTemps),
-                                low: Math.min(...hourlyTemps)
+                                high: tempMax,
+                                low: tempMin
                             },
                             wind: {
                                 speed: json.current_weather.windspeed,
@@ -143,20 +125,18 @@ export default function App() {
                             isNighttime: false,     // try to make this obsolete :(
                             localTime: null
                         },
-                        groups: {
-                            daily: json.daily.time.map((day, index) => {
-                                return {
-                                    time: day,
-                                    timeObj: dayjs(day, 'YYYY-MM-DD'),
-                                    temperature : {
-                                        high: json.daily.temperature_2m_max[index],
-                                        low: json.daily.temperature_2m_min[index]
-                                    },
-                                    condition: json.current_weather.weathercode
-                                }
-                            }),
-                            hourly: hourly
-                        }
+                        daily: json.daily.time.map((day, index) => {
+                            return {
+                                day: day,
+                                dtObj: dayjs(day, 'YYYY-MM-DD'),
+                                temperature : {
+                                    high: json.daily.temperature_2m_max[index],
+                                    low: json.daily.temperature_2m_min[index]
+                                },
+                                condition: json.current_weather.weathercode
+                            }
+                        }).slice(1),
+                        hourly: hourlyData
                     }
                     return wd
                 })
@@ -179,7 +159,7 @@ export default function App() {
     return (
         <main className='weather'>
             {/* Current Forecast */}
-            <Tabs activeTabSetter={setActiveMain} tabs={{
+            <Tabs ref={imperativeMain} activeTabSetter={setActiveMain} tabs={{
                 left: {
                     0: {
                         isHidden: Object.entries(locationData[0]).length === 0 ? true : false,
@@ -222,20 +202,17 @@ export default function App() {
                 }
             }}/>
             {/* Future Forecast */}
-            <Tabs activeTabSetter={setActiveGroup} tabs={{
-                shared: {
-                    end: <WeatherGroup locations={locationData} data={weatherData} group={activeGroup}/>
-                },
+            <Tabs tabs={{
                 left: {
                     daily: {
                         type: 'tab-alt',
                         alt: "Daily",
-                        component: null,
+                        component: <WeatherDaily locations={locationData} data={weatherData} datetime={dt}/>,
                     },
                     hourly: {
                         type: 'tab-alt',
                         alt: "Hourly",
-                        component: null
+                        component: <WeatherHourly locations={locationData} data={weatherData} datetime={dt}/>
                     }
                 }
             }}/>
@@ -286,10 +263,12 @@ export default function App() {
                 <LocationSearch 
                     data={locationData} 
                     set={(x) => {
+                        let newIndex = locationData.findIndex(o => {return Object.entries(o) == 0})
                         updateLocationData(
-                            locationData.findIndex(o => {return Object.entries(o) == 0}), 
+                            newIndex, 
                             x
                         )
+                        imperativeMain.current.updateActive(String(newIndex))
                     }} 
                     toggleModal={toggleAddModal}
                 />
@@ -308,10 +287,10 @@ function LocationSearch({data, set, toggleModal}) {
         inputRef.current.focus()
     }, [])
     useEffect(() => {
-        console.log("made call to geocoding API");
         fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${search}&count=100`, {method: 'GET'})
         .then(res => res.json())
         .then(json => {
+            console.log("made call to geocoding API");
             setResults(json.results || [])
         })
         .catch(err => console.log(err))
@@ -387,21 +366,22 @@ function Weather({locations, data}) {
             <p>{data.name}: {data.message}</p>
         </>
     )
+    const main = data.main
     return (
         <div className="weather__main">
-            <p>Temp:  {data.main.temperature.current}°F</p>
-            <p>{data.main.temperature.high} Hi / {data.main.temperature.low} Lo</p>
-            <p>Condition: {data.main.condition}</p>
-            <p>Wind {data.main.wind.speed} mph {data.main.wind.direction}</p>
-            <p>UV Index {data.main.uvIndex}</p>
-            <p>Percip {data.main.precipitation}</p>
-            <p>Humidity {data.main.humidity}</p>
-            <p>Sunrise {data.main.sunrise}</p>
-            <p>Sunset {data.main.sunset}</p>
+            <p>Temp:  {main.temperature.current}°F</p>
+            <p>{main.temperature.high} Hi / {main.temperature.low} Lo</p>
+            <p>Condition: {main.condition}</p>
+            <p>Wind {main.wind.speed} mph {main.wind.direction}</p>
+            <p>UV Index {main.uvIndex}</p>
+            <p>Percip {main.precipitation}</p>
+            <p>Humidity {main.humidity}</p>
+            <p>Sunrise {main.sunrise}</p>
+            <p>Sunset {main.sunset}</p>
         </div>
     )
 }
-function WeatherGroup({locations, data, group}) {
+function WeatherDaily({locations, data, datetime}) {
     if (JSON.stringify(locations) === "[{},{},{}]") return null
     if (data === null | data === undefined) return "loading"
     if (data instanceof Error) return (
@@ -410,20 +390,42 @@ function WeatherGroup({locations, data, group}) {
             <p>{data.name}: {data.message}</p>
         </>
     )
+    const daily = data.daily
+    return (
+        <ul className={`weather__group daily`}>
+            {daily.map((box) => (
+                <div className={`daily__box`} key={`group-daily-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
+                    <p>{box.day}</p>
+                    <p>{box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}</p>
+                    <p>{box.temperature.high} Hi / {box.temperature.low} Lo</p>
+                    <p>Condition: {box.condition}</p>
+                </div>
+            ))}
+        </ul>
+    )
+}
+function WeatherHourly({locations, data, datetime}) {
+    if (JSON.stringify(locations) === "[{},{},{}]") return null
+    if (data === null | data === undefined) return "loading"
+    if (data instanceof Error) return (
+        <>
+            <h2>Something went wrong!</h2>
+            <p>{data.name}: {data.message}</p>
+        </>
+    )
+    // cut list to only x hours after present
+    const hourly = data.hourly.filter((hour) => {
+        return hour.dtObj.isAfter(datetime)
+    }).slice(0, 24)
 
     return (
-        <ul className={`weather__group ${group}`}>
-            {data.groups[group].map((box) => (
-                <div className={`${group}__box`} key={`group-${group}-${box.timeObj.toISOString()}`}>
-                    <p>{box.time}</p>
-                        <p>{box.timeObj.toISOString()}</p>
-                        {group === "daily" && 
-                            <p>{box.temperature.high} Hi / {box.temperature.low} Lo</p>
-                        }
-                        {group === "hourly" && 
-                            <p>Temp: {box.temperature}°F</p>
-                        }
-                        <p>Condition: {box.condition}</p>
+        <ul className={`weather__group hourly`}>
+            {hourly.map((box) => (
+                <div className={`hourly__box`} key={`group-hourly-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
+                    <p>{box.hour}</p>
+                    <p>{box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}</p>
+                    <p>Temp: {box.temperature}°F</p>
+                    <p>Condition: {box.condition}</p>
                 </div>
             ))}
         </ul>

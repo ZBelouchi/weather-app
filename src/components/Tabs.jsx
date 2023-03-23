@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 
-export default function Tabs({activeTabSetter, tabs}) {
+function Tabs({activeTabSetter, tabs}, imperative) {
     if (!tabs.hasOwnProperty('shared')) {
         tabs.shared = {
             start: null,
@@ -18,15 +18,10 @@ export default function Tabs({activeTabSetter, tabs}) {
         center: {...tabs.center} || {},
         right: {...tabs.right} || {}
     }
-    
 
     if ([...Object.keys(tabs.left), ...Object.keys(tabs.center), ...Object.keys(tabs.right)].length !== Object.keys({...tabs.left, ...tabs.center, ...tabs.right}).length) {
         throw "DuplicateKey: one or more tabs in a <Tabs /> component use the same key. This may happen if tabs object nested within the section objects (left, center, right) use the same key as another across all sections"
     }
-
-
-    //TODO: possibly add 'gap' element between sections to provide bottom border
-    //TODO: if possible combine shared check into initial formatting (might not be possible though)
 
     const [activeTab, setActiveTab] = useState(() => {
         // use initial value if included
@@ -36,14 +31,23 @@ export default function Tabs({activeTabSetter, tabs}) {
             if (item[1].type !== 'basic') return item[0]
         }
     })
+    
+    useImperativeHandle(
+        imperative,
+        () => {return {
+            updateActive: (x) => {setActiveTab(x)}
+        }},
+        []
+    )
+
+    //TODO: possibly add 'gap' element between sections to provide bottom border
+    //TODO: if possible combine shared check into initial formatting (might not be possible though)
+
 
     useEffect(() => {
         if (activeTabSetter === undefined) return
         activeTabSetter(activeTab)
     }, [activeTab])
-
-
-
 
     return (
         <section className="tabs">
@@ -116,6 +120,8 @@ export default function Tabs({activeTabSetter, tabs}) {
         </section>
     )
 }
+
+export default forwardRef(Tabs)
 
 
 // USAGE //////////////////////////////////////////////////
