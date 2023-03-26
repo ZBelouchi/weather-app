@@ -9,16 +9,20 @@ import useAsyncCached from "../hooks/useAsyncCached"
 import Tabs from "./Tabs"
 import Modal from "./Modal"
 
+import IMAGES from '../assets/images'
+
 //TODO: format and apply data for new units (wind, uv, etc.)
 //TODO: make full UI for weather/group components
+//TODO: get and add icons for additional weather stats
 
+//TODO: replace imperative handle with some other method of passing up an update method so both Tabs components can use the same one (causes weather tab not switching when active tab is deleted and fatal error if that active tab is position 0)
 //TODO: filter out invalid locations from location search (e.g. no time zone or coordinates)
 //TODO: add current location selector (machine location)
 //TODO: make search a deferred value to prevent excessive API calls
 //TODO: possibly refine location data checks using regex
 //TODO: figure out how weather data is initially returning undefined while also not loading, then returning the actual data a moment later and fix it
 //TODO: add 'esc' to close functionality to modal
-
+//TODO: add local storage to remember forecasted locations between refreshes
 
 export default function App() {
     const {dt, dtTz, dtTime, dtDate, dtOffset, dtFormat, dtChangeTz} = useDatetime()
@@ -28,12 +32,12 @@ export default function App() {
     const imperativeMain = useRef()
     const {array: locationData, set: setLocationData, update: updateLocationData, remove: removeLocationData, push: pushLocationData} = useArray([
         {
-            lat: 39.44034,
-            lon: -84.36216,
-            timezone: "America/New_York",
-            name: "Monroe",
-            country: "United States",
-            admin: ['Ohio', 'Butler', 'Lemon Township'],
+            // lat: 39.44034,
+            // lon: -84.36216,
+            // timezone: "America/New_York",
+            // name: "Monroe",
+            // country: "United States",
+            // admin: ['Ohio', 'Butler', 'Lemon Township'],
         },
         {
             // lat:  44.91656,
@@ -65,8 +69,17 @@ export default function App() {
             const url = "https://api.open-meteo.com/v1/forecast?" + [
                 `latitude=${locationData[activeMain].lat}`,
                 `longitude=${locationData[activeMain].lon}`,
-                `hourly=temperature_2m,weathercode`,
-                `daily=weathercode,temperature_2m_max,temperature_2m_min,sunrise,sunset`,
+                `hourly=`+[
+                    `temperature_2m`,
+                    `weathercode`,
+                    `relativehumidity_2m`
+                ].join(','),
+                `daily=`+[
+                    `weathercode`,
+                    `temperature_2m_max`,
+                    `temperature_2m_min`,
+                    `sunrise,sunset`
+                ].join(','),
                 `current_weather=true`,
                 `timezone=auto`,
                 `temperature_unit=fahrenheit`,
@@ -76,20 +89,30 @@ export default function App() {
                 `start_date=${dt.format('YYYY-MM-DD')}`,
                 `end_date=${dt.add(7, "days").format('YYYY-MM-DD')}`,
             ].join("&")
-            //LEFT OFF: getting current date group data available while keeping the old future forecast in tact
             
             return fetch(url, {method: 'GET'})
                 .then(res => res.json())
                 .then(json => {
                     console.log("made call to forecast API");
-                    // console.log(json)
+                    console.log(json)
+
+                    let sunrises = json.daily.sunrise
+                    let sunsets = json.daily.sunset
 
                     let hourlyData = json.hourly.time.map((hour, index) => {
+                        let sunIndex = sunrises.map(
+                            time => time.slice(0,10)
+                        ).indexOf(
+                            hour.slice(0,10)
+                        )
                         return {
                             hour: hour.slice(11, 16),
                             dtObj: dayjs(hour, 'YYYY-MM-DDTHH:mm').tz(dtTz, true),
                             condition: json.hourly.weathercode[index],
-                            temperature: json.hourly.temperature_2m[index]
+                            temperature: json.hourly.temperature_2m[index],
+                            humidity: json.hourly.relativehumidity_2m[index],
+                            sunrise: dayjs(sunrises[sunIndex], "YYYY-MM-DDTHH:mm").tz(dtTz),
+                            sunset: dayjs(sunsets[sunIndex], "YYYY-MM-DDTHH:mm").tz(dtTz),
                         }
                     })
 
@@ -104,7 +127,7 @@ export default function App() {
                     let windDirection = directions[index];
 
                     // return {main: json}
-                    let wd = {
+                    return {
                         main: {
                             timeZone: json.timezone,
                             condition: json.current_weather.weathercode,
@@ -120,10 +143,9 @@ export default function App() {
                             humidity: 0,        // new
                             uvIndex: 0,         // new
                             precipitation: 0,   // new
-                            sunrise: null,
-                            sunset: null,
-                            isNighttime: false,     // try to make this obsolete :(
-                            localTime: null
+                            dtObj: dt,
+                            sunrise: dayjs(sunrises[0], "YYYY-MM-DDTHH:mm").tz(dtTz),
+                            sunset: dayjs(sunsets[0], "YYYY-MM-DDTHH:mm").tz(dtTz),
                         },
                         daily: json.daily.time.map((day, index) => {
                             return {
@@ -133,15 +155,17 @@ export default function App() {
                                     high: json.daily.temperature_2m_max[index],
                                     low: json.daily.temperature_2m_min[index]
                                 },
-                                condition: json.current_weather.weathercode
+                                condition: json.current_weather.weathercode,
+                                sunrise: dayjs(sunrises[index], "YYYY-MM-DDTHH:mm").tz(dtTz),
+                                sunset: dayjs(sunsets[index], "YYYY-MM-DDTHH:mm").tz(dtTz)
                             }
                         }).slice(1),
                         hourly: hourlyData
                     }
-                    return wd
                 })
         },
-        [locationData, activeMain, dt]
+        [locationData, activeMain]
+        // [locationData, activeMain, dt]
     )
 
     // console.log("weather data: ", weatherData);
@@ -160,6 +184,10 @@ export default function App() {
         <main className='weather'>
             {/* Current Forecast */}
             <Tabs ref={imperativeMain} activeTabSetter={setActiveMain} tabs={{
+                classAppend: {
+                    root: "container",
+                    left: "tabs__list--row"
+                },
                 left: {
                     0: {
                         isHidden: Object.entries(locationData[0]).length === 0 ? true : false,
@@ -192,17 +220,20 @@ export default function App() {
                     clock: {
                         type: 'basic',
                         component: (
-                            <div>
+                            <>
                                 <p>{dtFormat('dddd LL')}</p>
                                 <h2>{dtFormat('HH:mm:ss')}</h2>
                                 <p>{dtTz}</p>
-                            </div>
+                            </>
                         )
                     }
                 }
             }}/>
             {/* Future Forecast */}
             <Tabs tabs={{
+                classAppend: {
+                    root: "container",
+                },
                 left: {
                     daily: {
                         type: 'tab-alt',
@@ -216,6 +247,7 @@ export default function App() {
                     }
                 }
             }}/>
+
             {/* Modify Modal */}
             <Modal visible={modifyModal} toggle={toggleModifyModal}>
                 <Tabs tabs={{
@@ -348,6 +380,171 @@ function LocationSearch({data, set, toggleModal}) {
     )
 }
 
+function Condition({hideIcon, hideDesc, weathercode, datetime, sunset, sunrise, iconAppend, subAppend}) {
+    const CONDITIONS = {
+        0: {
+            description: "Clear Sky",
+            iconLayers: []
+        },
+        1: {
+            description: "Mainly Clear",
+            iconLayers: [IMAGES.cloud]
+        },
+        2: {
+            description: "Partly Cloudy",
+            iconLayers: [IMAGES.cloud]
+        },
+        3: {
+            description: "Overcast",
+            iconLayers: [IMAGES.cloud]
+        },
+        45: {
+            description: "Fog",
+            iconLayers: [IMAGES.fog]
+        },
+        48: {
+            description: "Depositing Rime Fog",
+            iconLayers: [IMAGES.fog]
+        },
+        51: {
+            description: "Light Drizzle",
+            iconLayers: [IMAGES.cloud, IMAGES.rain]
+        },
+        53: {
+            description: "Moderate Drizzle",
+            iconLayers: [IMAGES.cloud, IMAGES.rain]
+        },
+        55: {
+            description: "Dense Drizzle",
+            iconLayers: [IMAGES.cloud, IMAGES.rain]
+        },
+        56: {
+            description: "Light Freezing Drizzle",
+            iconLayers: [IMAGES.cloud, IMAGES.hail]
+        },
+        57: {
+            description: "Dense Freezing Drizzle",
+            iconLayers: [IMAGES.cloud, IMAGES.hail]
+        },
+        61: {
+            description: "Slight Rain",
+            iconLayers: [IMAGES.cloud, IMAGES.hail]
+        },
+        63: {
+            description: "Moderate Rain",
+            iconLayers: [IMAGES.cloud, IMAGES.rain]
+        },
+        65: {
+            description: "Heavy Rain",
+            iconLayers: [IMAGES.cloud, IMAGES.rain]
+        },
+        66: {
+            description: "Light Freezing Rain",
+            iconLayers: [IMAGES.cloud, IMAGES.hail]
+        },
+        67: {
+            description: "Heavy Freezing Rain",
+            iconLayers: [IMAGES.cloud, IMAGES.hail]
+        },
+        71: {
+            description: "Slight Snow Fall",
+            iconLayers: [IMAGES.cloud, IMAGES.snow]
+        },
+        73: {
+            description: "Moderate Snow Fall",
+            iconLayers: [IMAGES.cloud, IMAGES.snow]
+        },
+        75: {
+            description: "Heavy Snow Fall",
+            iconLayers: [IMAGES.cloud, IMAGES.snow]
+        },
+        77: {
+            description: "Snow Grains",
+            iconLayers: [IMAGES.cloud, IMAGES.snow]
+        },
+        80: {
+            description: "Slight Rain Showers",
+            iconLayers: [IMAGES.cloud, IMAGES.rain]
+        },
+        81: {
+            description: "Moderate Rain Showers",
+            iconLayers: [IMAGES.cloud, IMAGES.rain]
+        },
+        82: {
+            description: "Violent Rain Showers",
+            iconLayers: [IMAGES.cloud, IMAGES.rain]
+        },
+        85: {
+            description: "Slight Snow Showers",
+            iconLayers: [IMAGES.cloud, IMAGES.snow]
+        },
+        86: {
+            description: "Heavy Snow Showers",
+            iconLayers: [IMAGES.cloud, IMAGES.snow]
+        },
+        95: {
+            description: "Thunderstorm",
+            iconLayers: [IMAGES.darkcloud, IMAGES.lightning]
+        },
+        96: {
+            description: "Thunderstorm With Slight Hail",
+            iconLayers: [IMAGES.darkcloud, IMAGES.lightning, IMAGES.hail]
+        },
+        99: {
+            description: "Thunderstorm With Heavy Hail",
+            iconLayers: [IMAGES.darkcloud, IMAGES.lightning, IMAGES.hail]
+        },
+    }
+    let isNighttime = false
+    if (datetime !== undefined && sunset !== undefined && sunrise !== undefined) {
+        let set = sunset
+            .set('year', datetime.year())
+            .set('month', datetime.month())
+            .set('date', datetime.date())
+        let rise = sunrise
+            .set('year', datetime.year())
+            .set('month', datetime.month())
+            .set('date', datetime.date())
+        isNighttime = datetime.isAfter(set.subtract(1, 'day')) && datetime.isBefore(rise) | datetime.isAfter(set)
+    }
+
+    let layers = []
+
+    switch (weathercode) {
+        case 0:
+            layers.push(isNighttime ? IMAGES.moonClear : IMAGES.sunClear)
+            break
+        case 1:
+        case 2:
+        case 3:
+            layers.push(isNighttime ? IMAGES.moonCloudy : IMAGES.sunCloudy, IMAGES.cloudCloudy)
+            break
+        default:
+            layers.push(isNighttime ? IMAGES.moon : IMAGES.sun, ...CONDITIONS[weathercode].iconLayers)
+            break
+    }
+    return (
+        <>
+            {!hideIcon &&
+                <div className={`icon ${iconAppend}`}>
+                    {layers.map((layer, index) => {return (
+                        <img className={`icon__layer`} 
+                            key={`icon-layer-${index}`}
+                            src={layer} 
+                            alt="weather-icon-layer"
+                        />
+                    )})}
+                </div>
+            }
+            {!hideDesc &&
+                <div className={subAppend}>
+                    <p className="condition__description">{CONDITIONS[weathercode].description}</p>
+                </div>
+            }
+        </>
+    )
+}
+
 function WeatherTab({location}) {
     const {lat, lon, name, country, admin} = location
     return (
@@ -368,16 +565,71 @@ function Weather({locations, data}) {
     )
     const main = data.main
     return (
-        <div className="weather__main">
-            <p>Temp:  {main.temperature.current}°F</p>
-            <p>{main.temperature.high} Hi / {main.temperature.low} Lo</p>
-            <p>Condition: {main.condition}</p>
-            <p>Wind {main.wind.speed} mph {main.wind.direction}</p>
-            <p>UV Index {main.uvIndex}</p>
-            <p>Percip {main.precipitation}</p>
-            <p>Humidity {main.humidity}</p>
-            <p>Sunrise {main.sunrise}</p>
-            <p>Sunset {main.sunset}</p>
+        <div className="current">
+            <div className="current__top">
+
+                <div className="current__column current__column--temperature">
+                    <div className="current__main">
+                        <p className="current__temp">{main.temperature.current}<sup>°F</sup></p>
+                    </div>
+                    <div className="current__sub">
+                        <p className="current__hilo">{main.temperature.high} / {main.temperature.low}</p>
+                    </div>
+                </div>
+
+                <div className="current__column current__column--condition">
+                    <Condition 
+                        iconAppend="current__main icon--main" 
+                        subAppend="current__sub"
+                        weathercode={main.condition} 
+                        datetime={main.dtObj} 
+                        sunrise={main.sunrise} 
+                        sunset={main.sunset}
+                        size={['5em', '5em']}
+                    />
+                </div>
+            </div>
+            
+            <hr className="current__divider"/>
+
+            <ul className="current__list">
+                <li className="current__item">
+                    <div className="current__stat-icon">
+                        <img src={IMAGES.humidity} alt="humidity icon" />
+                    </div>
+                    <p className="current__stat-value">{main.humidity}%</p>
+                </li>
+                <li className="current__item">
+                    <div className="current__stat-icon">
+                        <img src={IMAGES.precipitation} alt="precipitation icon" />
+                    </div>
+                    <p className="current__stat-value">{main.precipitation}%</p>
+                </li>
+                <li className="current__item">
+                    <div className="current__stat-icon">
+                        <img src={IMAGES.uv} alt="uv icon" />
+                    </div>
+                    <p className="current__stat-value">{main.uvIndex}/10</p>
+                </li>
+                <li className="current__item">
+                    <div className="current__stat-icon">
+                        <img src={IMAGES.wind} alt="wind icon" />
+                    </div>
+                    <p className="current__stat-value">{main.wind.speed} mph {main.wind.direction}</p>
+                </li>
+                <li className="current__item">
+                    <div className="current__stat-icon">
+                        <img src={IMAGES.sunrise} alt="sunrise icon" />
+                    </div>
+                    <p className="current__stat-value">{main.sunrise.format("HH:mm")}</p>
+                </li>
+                <li className="current__item">
+                    <div className="current__stat-icon">
+                        <img src={IMAGES.sunset} alt="sunset icon" />
+                    </div>
+                    <p className="current__stat-value">{main.sunset.format("HH:mm")}</p>
+                </li>
+            </ul>
         </div>
     )
 }
@@ -392,13 +644,14 @@ function WeatherDaily({locations, data, datetime}) {
     )
     const daily = data.daily
     return (
-        <ul className={`weather__group daily`}>
+        <ul className={`daily`}>
             {daily.map((box) => (
                 <div className={`daily__box`} key={`group-daily-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
-                    <p>{box.day}</p>
-                    <p>{box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}</p>
-                    <p>{box.temperature.high} Hi / {box.temperature.low} Lo</p>
-                    <p>Condition: {box.condition}</p>
+                    <h3 className="daily__header daily__header--top">{box.dtObj.format('dddd')}</h3>
+                    <h4 className="daily__header daily__header--bottom">{box.dtObj.format('MM/DD')}</h4>
+                    <Condition iconAppend="daily__condition" hideDesc weathercode={box.condition}/>
+                    <hr className="daily__divider"/>
+                    <p className="daily__temperature">{box.temperature.high}° / {box.temperature.low}°</p>
                 </div>
             ))}
         </ul>
@@ -419,13 +672,18 @@ function WeatherHourly({locations, data, datetime}) {
     }).slice(0, 24)
 
     return (
-        <ul className={`weather__group hourly`}>
+        <ul className={`hourly`}>
             {hourly.map((box) => (
-                <div className={`hourly__box`} key={`group-hourly-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
-                    <p>{box.hour}</p>
-                    <p>{box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}</p>
-                    <p>Temp: {box.temperature}°F</p>
-                    <p>Condition: {box.condition}</p>
+                <div className={`daily__box`} key={`group-daily-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
+                    <h3 className="daily__header daily__header--top">{box.dtObj.format('dddd')}</h3>
+                    <h4 className="daily__header daily__header--bottom">{box.dtObj.format('MM/DD')}</h4>
+                    <Condition iconAppend="daily__condition" hideDesc weathercode={box.condition} datetime={box.dtObj} sunrise={box.sunrise} sunset={box.sunset}/>
+                    <hr className="daily__divider"/>
+                    <p className="daily__temperature">{box.temperature}°F</p>
+                    <div className="hourly__humidity">
+                        <img src={IMAGES.humidity} alt="humidity icon" />
+                        <p>{box.humidity}%</p>
+                    </div>
                 </div>
             ))}
         </ul>

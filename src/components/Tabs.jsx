@@ -14,6 +14,13 @@ function Tabs({activeTabSetter, tabs}, imperative) {
             end: null,
             ...tabs.shared
         },
+        classAppend: {
+            root: null,
+            left: null,
+            center: null,
+            right: null,
+            ...tabs.classAppend
+        },
         left: {...tabs.left} || {},
         center: {...tabs.center} || {},
         right: {...tabs.right} || {}
@@ -31,7 +38,7 @@ function Tabs({activeTabSetter, tabs}, imperative) {
             if (item[1].type !== 'basic') return item[0]
         }
     })
-    
+
     useImperativeHandle(
         imperative,
         () => {return {
@@ -50,12 +57,12 @@ function Tabs({activeTabSetter, tabs}, imperative) {
     }, [activeTab])
 
     return (
-        <section className="tabs">
+        <section className={`tabs ${tabs.classAppend.root}`}>
             <div className="tabs__header">
                 {['left', 'center', 'right'].map((section) => {
                     return (
                         // Sections (left, center, right)
-                        <div className={`tabs__list tabs__list--${section}`} key={`Tabs-${section}`}>
+                        <div className={`tabs__list tabs__list--${section} ${tabs.classAppend[section]}`} key={`Tabs-${section}`}>
                             {Object.entries(tabs[section]).map((tab) => {
                                 // Hidden flag true
                                 if (tab[1].isHidden === true) {return}
@@ -99,7 +106,7 @@ function Tabs({activeTabSetter, tabs}, imperative) {
                                     </button>
                                 // Component in tab slot
                                 )} else {return (
-                                    <div className='tabs__tab tabs__tab--basic' key={`Tabs-${section}-${tab[0]}`}>
+                                    <div className={`tabs__tab tabs__tab--basic ${tab[1].classAppend}`} key={`Tabs-${section}-${tab[0]}`}>
                                         {tab[1].component}
                                     </div>
                                 )}
@@ -127,15 +134,28 @@ export default forwardRef(Tabs)
 // USAGE //////////////////////////////////////////////////
 function Example() {
     const [active, setActive] = useState()
+    const imperativeTabs = useRef()
     return (
         <Tabs 
             // (opt.) state setter for tracking the current active tab id
             activeTabSetter={setActive}
 
+            // (opt.) imperative handle ref for passing up functions for the parent to call
+            ref={imperativeTabs}
+            // more info on methods passed up below (in 'imperative' tab)
+
             // initial tabs data passed in object
             tabs={{
                 // (opt.) initial tab id to be selected (defaults to left-most tab excluding basic component tabs)
                 initial: 'normal',
+
+                // (opt.) classes to be added to parts of the tabs component
+                classAppend: {
+                    root: 'container',  // (opt.) added to highest parent <section/> element in component
+                    left: '',           // (opt.) added to left tab group wrapper
+                    center: '',         // (opt.) added to center tab group wrapper
+                    right: ''           // (opt.) added to right tab group wrapper
+                },
 
                 // (opt.) shared object given components to be present in body with all tabs
                 shared: {
@@ -152,7 +172,7 @@ function Example() {
                         // type - tab format
                         type: 'tab',                                // 'tab' type uses object key as tab name and label
                         component: <p>Tab Content</p>,              // component          - content given the the body of the section when the tab is active
-                        classAppend: 'tabs__tab--blue',             // classAppend (opt.) - custom class added to a tab's element (not used in 'basic' type)
+                        classAppend: 'tabs__tab--blue',             // classAppend (opt.) - custom class added to a tab's element
                         onActive: () => {alert("already in use")}   // onActive (opt.)    - function executed upon clicking a tab when it's already active (not used in 'basic' type)
                     },
                     
@@ -174,14 +194,15 @@ function Example() {
                     // basic type
                     basic: {
                         type: 'basic',          // 'basic' no tab functionality, just uses passes a component to occupy a tab slot
-                        component: <p>Just a normal component, no tab here</p>
-                        //NOTE: basic type only requires type and component props, classAppend and onActive aren't applicable
+                        component: <p>Just a normal component, no tab here</p>,
+                        classAppend: 'tabs__tab--blue'      
+                        //NOTE: basic type only requires type and component props, onActive isn't applicable, though class append will work if needed
                     },
 
                     // hidden tabs
                     hidden: {
                         // tabs with the (optional) isHidden prop as true will not be rendered
-                        isHidden: false,
+                        isHidden: true,
                         type: 'tab',
                         component: <p>This won't be seen</p>
                     },
@@ -189,9 +210,22 @@ function Example() {
                     // disabled tabs (COMING SOON)
                     disabled: {
                         // tabs with the (optional) isDisabled prop as true will be displayed but will do nothing on click
-                        isDisabled: false,
+                        isDisabled: true,
                         type: 'tab',
                         component: <p>This won't be seen</p>
+                    },
+
+                    // using imperative handles
+                    imperative: {
+                        type: 'tab',
+                        component: (
+                            <>
+                                {/* update active tab from parent of Tabs component */}
+                                <button onClick={
+                                    () => imperativeTabs.current.updateActive('normal')
+                                }>Go to first tab</button>
+                            </>
+                        )
                     }
                 },
 

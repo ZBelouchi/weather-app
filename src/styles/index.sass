@@ -9,8 +9,8 @@
 html
     font-size: 1rem
     color: white
-    // font-family: $normal
-    background: $blue
+    font-family: sans-serif
+    text-align: center
 img
     max-width: 100%  
 
@@ -36,6 +36,12 @@ li
     .fake
         width: 100%
 
+button, .btn
+    border: 2px outset grey
+
+hr
+    width: 60%
+    margin: auto
 
 // Universal
 .container
@@ -50,26 +56,28 @@ li
     &__header
         display: flex
         justify-content: space-between
-        @include debug(lime)
+        @include xs
+            flex-direction: column-reverse
     &__list
         display: flex
         &--left
+        &--center
         &--right
     &__tab
-        border: 2px solid teal
-        @include debug(magenta)
         padding: 0.5em
         background: $darkblue
         color: white
         &--active
-            border-bottom: none
             background: $blue
-        &--basic
-            background: $blue
-            border-bottom: none
+        @include sm
+            &--active
+                border-bottom: none
+            &--basic
+                border-bottom: none
     &__body
-        border: 2px solid teal
+        // border: 2px solid teal
         border-top: none
+        background: $blue
 
 // Modal
 .modal
@@ -93,16 +101,105 @@ li
 
 .weather
     &__tab
+
+.condition
+    width: fit-content
+    &__description
+.icon
+    // outline: 2px solid magenta
+    position: relative
+    width: 5em
+    height: 5em
+    &--main
+        width: 7em
+        height: 7em
+    &__layer
+        width: 100%
+        height: 100%
+        @include center
+ 
+.current
+    &__top
+        // @include debug(gray)
+        display: flex
+        justify-content: space-around
+        padding: 2em 0
+    &__column
+        // @include debug(lime)
+        width: fit-content
+        display: flex
+        flex-direction: column
+        align-items: center
+        &--temperature
+            display: flex
+            flex-direction: column
+            align-self: center
+        &--condition
     &__main
-    &__group
-    
+        // @include debug(red)
+        min-height: 7em
+    &__temp
+        font-size: 5rem
+        sup
+            font-size: 0.5em
+    &__sub
+        // @include debug(blue)
+    &__divider
+    &__list
+        padding: 2em
+
+        display: flex
+        flex-wrap: wrap
+    &__item
+        display: flex
+        flex-direction: column
+        width: 50%
+        align-items: center
+        margin: auto
+        @include sm
+            flex-direction: row
+            &:nth-last-child(even)
+                flex-direction: row-reverse
+
+    &__stat-icon
+        width: 3em
+        height: 3em
+        margin: 0.2em
+    &__stat-value
+        align-self: center
+        width: fit-content
+
+        
 .daily, .hourly
+    // border: 2px solid white
     display: flex
-    flex-wrap: wrap
+    overflow-x: scroll
     &__box
-        @include debug(white)
+        // border: 2px solid red
         padding: 0.5em
-        min-width: 8em
+        display: flex
+        flex-direction: column
+        align-self: center
+        width: fit-content
+        height: fit-content
+    &__header
+        // border: 2px solid lime
+        &--top
+        &--bottom
+    &__condition
+        // border: 2px solid blue
+    &__divider
+    &__temperature
+        // border: 2px solid yellow
+    &__humidity
+        // border: 2px solid magenta
+        display: flex
+        width: fit-content
+        margin: auto
+        img
+            width: 1.5em
+            height: 1.5em
+        p
 
 
 .select
@@ -110,19 +207,14 @@ li
     &__search
     &__input
     &__list
-        max-height: 300px
-        overflow: scroll
     &__item
-        padding: 0.5em
-        display: flex
-        justify-content: space-around
-        *
-            width: 10em
         &:hover
-            background: $blue
     
     &--add
-    // &--modify
+
+@include sm
+    .row
+        display: flex
 
 
 
@@ -134,138 +226,147 @@ li
 
 
 
-
-
-
-
-// // LocationSelect
-// .location
-//     &__title
-// .search
-//     &__label
-//     &__box
-// .results
-//     &__item     // likely temproary
-//     &__value
-//         &--name
-//         &--area
-//         &--country
-//         &--time
-
-// // Weather
-// .weather
-//     &__header
-//     &__group
-//         border: 0.3em outset $blue
-//         border-radius: 8px
-//         padding: 1em
-//         overflow-x: scroll
-//         em
-//         &--daily
-//         &--hourly
-//     &__list
-//     &__box
-//         text-align: center
-//         border-radius: 8px
-//         // width: 
-//         padding: 1em
-//         &--main
-//             border: 0.3em outset $blue
-//         &--aux
-//             font-size: 0.8rem
-//     &__location
-//         // @include debug(gray)
-//         margin: 0 0 1em 0
-//     &__stats
-//         // @include debug(gray)
-//     &__condition
-//         // @include debug(gray)
-//     &__icon
-//         position: relative
-//         width: 5em
-//         height: 5em
-//         margin: 0.5em
-//         &--layer
-//             width: 100%
-//             height: 100%
-//             @include center
-// .flex
-//     display: flex
-//     justify-content: space-around
-// @include md 
-//     .row
-//         display: flex
-//     .column
-//         display: flex
-//         flex-direction: column
-// .col
-//     width: 100%
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// /////////////////////////////////
+// // Universal
 // .container
-//     width: 80%
-//     max-width: 1200px
+//     width: 90%
+//     max-width: 1100px
 //     margin: auto
-//     @include debug(white)
+//     background: $darkblue
+//     padding: 1em
 
-// // .location-select
-// .search
-//     &__list
-//         @include debug(lime)
-//     &__item
-//         @include debug(blue)
-//         padding: 0.5em
+// // Tabs
+// .tabs
+//     &__header
 //         display: flex
-//         justify-content: space-around
-//         *
-//             width: 10em
-//         &:hover
-//             background-color: navy
-            
+//         justify-content: space-between
+//         // @include debug(lime)
+//     &__list
+//         display: flex
+//         &--left
+//         &--center
+//         &--right
+//         &--row
+//             @include xs
+//                 flex-direction: column-reverse
+//     &__tab
+//         // border: 2px solid teal
+//         // @include debug(magenta)
+//         padding: 0.5em
+//         background: $darkblue
+//         color: white
+//         &--active
+//             background: $blue
+//         @include sm
+//             &--active
+//                 border-bottom: none
+//             &--basic
+//                 border-bottom: none
+//     &__body
+//         // border: 2px solid teal
+//         border-top: none
+//         background: $blue
+
+// // Modal
+// .modal
+//     &__box
+//         position: fixed
+//         top: 50%
+//         left: 50%
+//         translate: -50% -50%
+//         z-index: 1001
+//         background-color: gray
+//         border: 2px solid black
+//     &__overlay
+//         position: fixed
+//         top: 0
+//         left: 0
+//         right: 0
+//         bottom: 0
+//         background-color: #00000098
+//         z-index: 1000
+
 
 // .weather
-//     padding: 1em
-//     &__box
-//         padding: 1em
-//         @include debug(blue)
-//         font-size: 0.8rem
-//         width: 14em
-//         &--mini
-//             @include debug(gray)
-//             font-size: 0.5rem
-//     &__hourly
-//         @include debug(teal)
-//     &__daily
-//         @include debug(tan)
-//     &__stat
-//         padding: 0.5em
+//     &__tab
+
+// .condition
+//     // padding: 0.5em
+//     @include debug(blue)
+//     width: fit-content
+//     &__description
+//         // width: fit-content
+// .icon
+//     position: relative
+//     width: 5em
+//     height: 5em
+//     &--main
+//         width: 7em
+//         height: 7em
+//     &__layer
 //         width: 100%
-//         &--location
-//         &--condition
-//             img
-//                 @include debug(pink)
-//         &--temperature
-//             font-size: .8em
-//         &--wind
+//         height: 100%
+//         @include center
+//         &--recentered
+//             translate: -50% -25%
+//             scale: 1.3
+ 
+// .current
+//     &__main
+//         // display: flex
+//         // justify-content: space-around
+//         // font-size: 2rem
+//         // padding: 0.5em
+//     &__main-column
+//         // width: fit-content
+//         // margin: auto
+//         // justify-content: space-around
+//     &__temp-main
+//         // font-size: 3.5em
+//         sup
+//             // font-size: 0.5em
+//     &__temp-sub
+//     &__divider
+//         // width: 50%
+//         // margin: auto
+//     &__list
+//         // padding: 1em
+//         // justify-content: space-around
+//         // flex-wrap: wrap
+//         // width: fit-content
+//         // margin: auto
+//     &__item
+//         // @include sm
+//         //     width: 50%
+//         // margin: auto
+        
 
-//     &__icon
-//         position: relative
-//         width: 5em
-//         height: 5em
-//         &--layer
-//             position: absolute
-//             width: 100%
-//             height: 100%
+        
+// .daily, .hourly
+//     // display: flex
+//     // overflow: scroll
+//     // height: 200px
+//     &__box
+//         // @include debug(white)
+//         // padding: 0.5em
+//         // min-width: 8em
 
+
+// .select
+//     &__header
+//     &__search
+//     &__input
+//     &__list
+//         // max-height: 300px
+//         // overflow: scroll
+//     &__item
+//         // padding: 0.5em
+//         // display: flex
+//         // justify-content: space-around
+//         // *
+//         //     width: 10em
+//         &:hover
+//             // background: $blue
+    
+//     &--add
+//     // &--modify

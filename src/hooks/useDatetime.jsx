@@ -42,7 +42,6 @@ export default function useDatetime(tmz, exact) {
         return d
     }
 
-    console.log(timezone);
     return {
         dt: datetime,                            // datetime object form
         dtUnix: datetime.valueOf(),              // unix timestamp form (seconds from epoch)
