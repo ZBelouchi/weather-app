@@ -48,7 +48,7 @@ hr
     width: 90%
     max-width: 1100px
     margin: auto
-    background: $darkblue
+    // background: $darkblue
     padding: 1em
 
 // Tabs
@@ -65,7 +65,7 @@ hr
         &--right
     &__tab
         padding: 0.5em
-        background: $darkblue
+        background: $black
         color: white
         &--active
             background: $blue
@@ -140,6 +140,8 @@ hr
         min-height: 7em
     &__temp
         font-size: 5rem
+        &--small
+            font-size: 0.25em
         sup
             font-size: 0.5em
     &__sub
@@ -171,28 +173,29 @@ hr
 
         
 .daily, .hourly
-    // border: 2px solid white
     display: flex
     overflow-x: scroll
+    padding: 0.5em
     &__box
-        // border: 2px solid red
-        padding: 0.5em
         display: flex
         flex-direction: column
-        align-self: center
-        width: fit-content
-        height: fit-content
+        align-items: center 
+        padding: 0.5em
+        border: 2px outset gray
+        border-radius: 8px
+    .daily__box
+        width: 100%
+    .hourly__cell
+        display: inline-block
+        min-width: 7em
     &__header
-        // border: 2px solid lime
+        word
         &--top
         &--bottom
     &__condition
-        // border: 2px solid blue
     &__divider
     &__temperature
-        // border: 2px solid yellow
-    &__humidity
-        // border: 2px solid magenta
+    &__stat
         display: flex
         width: fit-content
         margin: auto
@@ -203,14 +206,21 @@ hr
 
 
 .select
-    &__header
-    &__search
-    &__input
-    &__list
-    &__item
-        &:hover
-    
     &--add
+    &--modify
+    &__header
+    &__input
+    &__btn
+    &__search
+    &__list
+        max-height: 500px
+        overflow-y: scroll
+    &__item
+        border: 2px solid blue
+        padding: 0.5em
+        &:hover
+            background: teal
+    
 
 @include sm
     .row

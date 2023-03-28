@@ -19,6 +19,7 @@ import uv from "../assets/stat-icons/uv.png"
 import wind from "../assets/stat-icons/wind.png"
 import sunrise from "../assets/stat-icons/sunrise.png"
 import sunset from "../assets/stat-icons/sunset.png"
+import temperature from "../assets/stat-icons/temperature.png"
 
 const IMAGES = {
     cloud: cloud,
@@ -41,6 +42,7 @@ const IMAGES = {
     wind: wind,
     sunrise: sunrise,
     sunset: sunset,
+    temperature: temperature,
 }
 
 export default IMAGES

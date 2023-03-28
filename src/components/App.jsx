@@ -32,12 +32,12 @@ export default function App() {
     const imperativeMain = useRef()
     const {array: locationData, set: setLocationData, update: updateLocationData, remove: removeLocationData, push: pushLocationData} = useArray([
         {
-            // lat: 39.44034,
-            // lon: -84.36216,
-            // timezone: "America/New_York",
-            // name: "Monroe",
-            // country: "United States",
-            // admin: ['Ohio', 'Butler', 'Lemon Township'],
+            lat: 39.44034,
+            lon: -84.36216,
+            timezone: "America/New_York",
+            name: "Gooberville",
+            country: "United States",
+            admin: ['Somewhere', 'Here', 'A Township'],
         },
         {
             // lat:  44.91656,
@@ -258,8 +258,8 @@ export default function App() {
                         change: {
                             type: 'tab',
                             component: (
-                                <div>
-                                    <h2>Change Location?</h2>
+                                <div className="select select--modify">
+                                    <h2 className="select__header">Change Location?</h2>
                                     <LocationSearch data={locationData} set={(x) => updateLocationData(activeMain, x)} toggleModal={toggleModifyModal}/>
                                 </div>
                             ),
@@ -292,20 +292,27 @@ export default function App() {
             </Modal>
             {/* Add Modal */}
             <Modal visible={addModal} toggle={toggleAddModal} disableClickOff>
-                <LocationSearch 
-                    data={locationData} 
-                    set={(x) => {
-                        let newIndex = locationData.findIndex(o => {return Object.entries(o) == 0})
-                        updateLocationData(
-                            newIndex, 
-                            x
-                        )
-                        imperativeMain.current.updateActive(String(newIndex))
-                    }} 
-                    toggleModal={toggleAddModal}
-                />
-                {/* cancel button (don't render if no data currently exists) */}
-                {!(JSON.stringify([...locationData]) === "[{},{},{}]") && <button onClick={toggleAddModal}>cancel</button>}
+                <div className="select select--add">
+                    <h2 className="select__header">Add a location:</h2>
+                    <LocationSearch 
+                        data={locationData} 
+                        set={(x) => {
+                            let newIndex = locationData.findIndex(o => {return Object.entries(o) == 0})
+                            updateLocationData(
+                                newIndex, 
+                                x
+                            )
+                            imperativeMain.current.updateActive(String(newIndex))
+                        }} 
+                        toggleModal={toggleAddModal}
+                    />
+                    {/* cancel button (don't render if no data currently exists) */}
+                    {!(JSON.stringify([...locationData]) === "[{},{},{}]") && 
+                        <button className="select__btn" onClick={toggleAddModal}>cancel</button>
+                    }
+                </div>
+                
+               
             </Modal>
         </main>
     )
@@ -328,55 +335,61 @@ function LocationSearch({data, set, toggleModal}) {
         .catch(err => console.log(err))
     }, [search])
     return (
-        <div className="select">
-            <h2 className="select__header">Add a location:</h2>
-            <div className="select__search">
-                <label htmlFor="addSearch">Search:</label>
-                <input className="select__input"
-                    type="text"
-                    id="addSearch"
-                    ref={inputRef}
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                />
+        <>
+            <div className="select__input">
+                <label htmlFor="select-locate">Use Current Location</label>
+                <input type="button" value="" />
             </div>
-            {results.length <= 0 ? null : 
+            <div className="select__input">
+                <label htmlFor="select-search">Search</label>
+                <input className="select__input"
+                        type="text"
+                        id="select-search"
+                        ref={inputRef}
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                    />
+            </div>
+            {results.length > 0 &&
                 <ul className="select__list">
-                {results.map(result => (
-                    <li className="select__item" 
-                        key={`result-${result.name}=${result.id}`}
-                        onClick={() => {
-                            let location = {
-                                lat: result.latitude,
-                                lon: result.longitude,
-                                timezone: result.timezone,
-                                name: result.name,
-                                country: result.country,
-                                admin: [
+                    {results.map(result => (
+                        <li className="select__item" 
+                            key={`result-${result.name}=${result.id}`}
+                            onClick={() => {
+                                let location = {
+                                    lat: result.latitude,
+                                    lon: result.longitude,
+                                    timezone: result.timezone,
+                                    name: result.name,
+                                    country: result.country,
+                                    admin: [
+                                        result.admin1 || null,
+                                        result.admin2 || null,
+                                        result.admin3 || null
+                                    ].filter(x => {return x != null})
+                                }
+                                // check if location is already in use
+                                if (JSON.stringify(data).includes(JSON.stringify(location))) {
+                                    alert("this location is already being forecasted")
+                                    return
+                                }
+                                set(location)
+                                toggleModal()
+                            }}
+                        >
+                            <h3>{result.name}, {result.country}</h3>
+                            <p>
+                                {[
                                     result.admin1 || null,
                                     result.admin2 || null,
                                     result.admin3 || null
-                                ].filter(x => {return x != null})
-                            }
-                            // check if location is already in use
-                            if (JSON.stringify(data).includes(JSON.stringify(location))) {
-                                alert("this location is already being forecasted")
-                                return
-                            }
-                            set(location)
-                            toggleModal()
-                        }}
-                    >
-                        <p>{result.name}</p>
-                        <p>{result.admin1 ?? ''}</p>
-                        <p>{result.admin2 ?? ''}</p>
-                        <p>{result.admin3 ?? ''}</p>
-                        <p>{result.country}</p>
-                    </li>
-                ))}
-            </ul>
+                                ].filter(x => {return x != null}).join(", ")}
+                            </p>
+                        </li>
+                    ))}
+                </ul>
             }
-        </div>
+        </>
     )
 }
 
@@ -570,7 +583,8 @@ function Weather({locations, data}) {
 
                 <div className="current__column current__column--temperature">
                     <div className="current__main">
-                        <p className="current__temp">{main.temperature.current}<sup>°F</sup></p>
+                        <p className="current__temp">{Math.trunc(main.temperature.current)}<span className="current__temp--small">.{String(main.temperature.current).split(".")[1]}</span><sup>°F</sup></p>
+                        {/* <p className="current__temp">48<span className="current__temp--small">.6</span><sup>°F</sup></p> */}
                     </div>
                     <div className="current__sub">
                         <p className="current__hilo">{main.temperature.high} / {main.temperature.low}</p>
@@ -651,7 +665,7 @@ function WeatherDaily({locations, data, datetime}) {
                     <h4 className="daily__header daily__header--bottom">{box.dtObj.format('MM/DD')}</h4>
                     <Condition iconAppend="daily__condition" hideDesc weathercode={box.condition}/>
                     <hr className="daily__divider"/>
-                    <p className="daily__temperature">{box.temperature.high}° / {box.temperature.low}°</p>
+                    <p className="daily__temperature">{Math.round(box.temperature.high)}° / {Math.round(box.temperature.low)}°</p>
                 </div>
             ))}
         </ul>
@@ -674,15 +688,19 @@ function WeatherHourly({locations, data, datetime}) {
     return (
         <ul className={`hourly`}>
             {hourly.map((box) => (
-                <div className={`daily__box`} key={`group-daily-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
-                    <h3 className="daily__header daily__header--top">{box.dtObj.format('dddd')}</h3>
-                    <h4 className="daily__header daily__header--bottom">{box.dtObj.format('MM/DD')}</h4>
-                    <Condition iconAppend="daily__condition" hideDesc weathercode={box.condition} datetime={box.dtObj} sunrise={box.sunrise} sunset={box.sunset}/>
-                    <hr className="daily__divider"/>
-                    <p className="daily__temperature">{box.temperature}°F</p>
-                    <div className="hourly__humidity">
-                        <img src={IMAGES.humidity} alt="humidity icon" />
-                        <p>{box.humidity}%</p>
+                <div className="hourly__cell">
+                    <div className={`hourly__box`} key={`group-hourly-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
+                        <h3 className="hourly__header hourly__header--top">{box.dtObj.format('hh:mm a')}</h3>
+                        <Condition iconAppend="hourly__condition" hideDesc weathercode={box.condition} datetime={box.dtObj} sunrise={box.sunrise} sunset={box.sunset}/>
+                        <hr className="hourly__divider"/>
+                        <div className="hourly__stat">
+                            <img src={IMAGES.temperature} alt="thermometer icon" />
+                            <p className="hourly__temperature">{Math.round(box.temperature)}°F</p>
+                        </div>
+                        <div className="hourly__stat">
+                            <img src={IMAGES.humidity} alt="humidity icon" />
+                            <p>{box.humidity}%</p>
+                        </div>
                     </div>
                 </div>
             ))}
