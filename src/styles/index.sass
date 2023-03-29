@@ -11,6 +11,8 @@ html
     color: white
     font-family: sans-serif
     text-align: center
+    // background: lightblue
+
 img
     max-width: 100%  
 
@@ -60,24 +62,31 @@ hr
             flex-direction: column-reverse
     &__list
         display: flex
+        z-index: 1
         &--left
         &--center
         &--right
     &__tab
         padding: 0.5em
-        background: $black
+        // background: $black
+        @include blurred-overlay($base-color: black)
         color: white
         &--active
-            background: $blue
+            // background: $blue
+            @include blurred-overlay($base-color: $blue)
         @include sm
             &--active
                 border-bottom: none
+                z-index: 1
             &--basic
                 border-bottom: none
+                z-index: 0
     &__body
+        z-index: 2
         // border: 2px solid teal
         border-top: none
-        background: $blue
+        // background: $blue
+        @include blurred-overlay($base-color: $blue)
 
 // Modal
 .modal
@@ -98,6 +107,17 @@ hr
         background-color: #00000098
         z-index: 1000
 
+.sky
+    position: relative
+    transition: background 1s ease
+    &--day
+        background-image: $day
+    &--dusk 
+        background-image: $dusk
+    &--night
+        background-image: $night
+    &--dawn
+        background-image: $dawn
 
 .weather
     &__tab
@@ -200,8 +220,8 @@ hr
         width: fit-content
         margin: auto
         img
-            width: 1.5em
-            height: 1.5em
+            width: 1em
+            height: 1em
         p
 
 

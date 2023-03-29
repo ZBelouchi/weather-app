@@ -12,20 +12,17 @@ import Modal from "./Modal"
 import IMAGES from '../assets/images'
 
 //TODO: format and apply data for new units (wind, uv, etc.)
-//TODO: make full UI for weather/group components
-//TODO: get and add icons for additional weather stats
 
 //TODO: replace imperative handle with some other method of passing up an update method so both Tabs components can use the same one (causes weather tab not switching when active tab is deleted and fatal error if that active tab is position 0)
-//TODO: filter out invalid locations from location search (e.g. no time zone or coordinates)
-//TODO: add current location selector (machine location)
 //TODO: make search a deferred value to prevent excessive API calls
 //TODO: possibly refine location data checks using regex
-//TODO: figure out how weather data is initially returning undefined while also not loading, then returning the actual data a moment later and fix it
-//TODO: add 'esc' to close functionality to modal
 //TODO: add local storage to remember forecasted locations between refreshes
+//TODO: add options modal with unit swapper (US-Metric) and time zone display changer
 
 export default function App() {
     const {dt, dtTz, dtTime, dtDate, dtOffset, dtFormat, dtChangeTz} = useDatetime()
+    const sunTimes = useRef({rise: undefined, set: undefined})
+    const [skyClass, setSkyClass] = useState('huh')
     const [modifyModal, toggleModifyModal] = useToggle(false)
     const [addModal, toggleAddModal] = useToggle(false)
     const [activeMain, setActiveMain] = useState(0)
@@ -56,7 +53,6 @@ export default function App() {
             // admin: ['Bas-Uele', 'Poko'],
         }
     ])
-    // console.log("location data: ", locationData);
 
     const weatherData = useAsyncCached(
         () => {
@@ -94,10 +90,13 @@ export default function App() {
                 .then(res => res.json())
                 .then(json => {
                     console.log("made call to forecast API");
-                    console.log(json)
+                    // console.log(json)
 
                     let sunrises = json.daily.sunrise
+                    sunTimes.current.rise = dayjs(sunrises[0], "YYYY-MM-DDTHH:mm").tz(dtTz)
+
                     let sunsets = json.daily.sunset
+                    sunTimes.current.set = dayjs(sunsets[0], "YYYY-MM-DDTHH:mm").tz(dtTz)
 
                     let hourlyData = json.hourly.time.map((hour, index) => {
                         let sunIndex = sunrises.map(
@@ -164,24 +163,58 @@ export default function App() {
                     }
                 })
         },
-        [locationData, activeMain]
-        // [locationData, activeMain, dt]
+        // [locationData, activeMain]
+        [locationData, activeMain, dt]
     )
 
-    // console.log("weather data: ", weatherData);
-
+    // bring up add location modal if no locations are set
     useEffect(() => {
         if (JSON.stringify([...locationData]) === "[{},{},{}]") {
             toggleAddModal(true)
         }
     }, [])
-
+    // change useDatetime timezone when needed
     useEffect(() => {
         dtChangeTz(locationData[activeMain].timezone)
     }, [locationData, activeMain])
+    // update background sky color to match time/sun position
+    useEffect(() => {
+        let sunrise = sunTimes.current.rise
+        let sunset = sunTimes.current.set
+        
+        let sky = 'day'
+        if (dt !== undefined && sunset !== undefined && sunrise !== undefined) {
+            let set = sunset
+                .set('year', dt.year())
+                .set('month', dt.month())
+                .set('date', dt.date())
+            let rise = sunrise
+                .set('year', dt.year())
+                .set('month', dt.month())
+                .set('date', dt.date())
+            const times = {
+                dawn: rise,
+                day: rise.add(30, 'minutes'),
+                dusk: set,
+                night: set.add(1, 'hour')
+            }
 
+            //times: (night)  >  dawn  >  day >  dusk  >  night  >  (dawn)
+            //set  :          night    dawn   day      dusk      night
+            if (dt.isBetween(times.night.subtract(1, 'day'), times.dawn)) {sky = 'night'}
+            else if (dt.isBetween(times.dawn, times.day)) {sky = 'dawn'}
+            else if (dt.isBetween(times.day, times.dusk)) {sky = 'day'}
+            else if (dt.isBetween(times.dusk, times.night)) {sky = 'dusk'}
+            else if (dt.isBetween(times.night, times.dawn.add(1, 'day'))) {sky = 'night'}
+            else {sky = 'day'}
+        }
+        setSkyClass(sky)
+    }, [dt])
+
+    console.log("sent", skyClass);
     return (
-        <main className='weather'>
+        // <main className={`sky--${skyClass}`}>
+        <main className={`weather sky--${skyClass}`}>
             {/* Current Forecast */}
             <Tabs ref={imperativeMain} activeTabSetter={setActiveMain} tabs={{
                 classAppend: {
@@ -312,7 +345,7 @@ export default function App() {
                     }
                 </div>
                 
-               
+            
             </Modal>
         </main>
     )
@@ -337,10 +370,6 @@ function LocationSearch({data, set, toggleModal}) {
     return (
         <>
             <div className="select__input">
-                <label htmlFor="select-locate">Use Current Location</label>
-                <input type="button" value="" />
-            </div>
-            <div className="select__input">
                 <label htmlFor="select-search">Search</label>
                 <input className="select__input"
                         type="text"
@@ -352,41 +381,46 @@ function LocationSearch({data, set, toggleModal}) {
             </div>
             {results.length > 0 &&
                 <ul className="select__list">
-                    {results.map(result => (
-                        <li className="select__item" 
-                            key={`result-${result.name}=${result.id}`}
-                            onClick={() => {
-                                let location = {
-                                    lat: result.latitude,
-                                    lon: result.longitude,
-                                    timezone: result.timezone,
-                                    name: result.name,
-                                    country: result.country,
-                                    admin: [
+                    {results.map(result => {
+                        if ([result.name, result.country, result.latitude, result.longitude, result.timezone].includes(undefined)) {
+                            return null
+                        }
+                        return (
+                            <li className="select__item" 
+                                key={`result-${result.name}=${result.id}`}
+                                onClick={() => {
+                                    let location = {
+                                        lat: result.latitude,
+                                        lon: result.longitude,
+                                        timezone: result.timezone,
+                                        name: result.name,
+                                        country: result.country,
+                                        admin: [
+                                            result.admin1 || null,
+                                            result.admin2 || null,
+                                            result.admin3 || null
+                                        ].filter(x => {return x != null})
+                                    }
+                                    // check if location is already in use
+                                    if (JSON.stringify(data).includes(JSON.stringify(location))) {
+                                        alert("this location is already being forecasted")
+                                        return
+                                    }
+                                    set(location)
+                                    toggleModal()
+                                }}
+                            >
+                                <h3>{result.name}, {result.country}</h3>
+                                <p>
+                                    {[
                                         result.admin1 || null,
                                         result.admin2 || null,
                                         result.admin3 || null
-                                    ].filter(x => {return x != null})
-                                }
-                                // check if location is already in use
-                                if (JSON.stringify(data).includes(JSON.stringify(location))) {
-                                    alert("this location is already being forecasted")
-                                    return
-                                }
-                                set(location)
-                                toggleModal()
-                            }}
-                        >
-                            <h3>{result.name}, {result.country}</h3>
-                            <p>
-                                {[
-                                    result.admin1 || null,
-                                    result.admin2 || null,
-                                    result.admin3 || null
-                                ].filter(x => {return x != null}).join(", ")}
-                            </p>
-                        </li>
-                    ))}
+                                    ].filter(x => {return x != null}).join(", ")}
+                                </p>
+                            </li>
+                        )
+                    })}
                 </ul>
             }
         </>
