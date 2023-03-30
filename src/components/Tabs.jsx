@@ -1,6 +1,6 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
+import React, { forwardRef, useEffect, useState } from 'react'
 
-function Tabs({activeTabSetter, tabs}, imperative) {
+export default function Tabs({activeTab, setActiveTab, tabs}) {
     if (!tabs.hasOwnProperty('shared')) {
         tabs.shared = {
             start: null,
@@ -30,33 +30,29 @@ function Tabs({activeTabSetter, tabs}, imperative) {
         throw "DuplicateKey: one or more tabs in a <Tabs /> component use the same key. This may happen if tabs object nested within the section objects (left, center, right) use the same key as another across all sections"
     }
 
-    const [activeTab, setActiveTab] = useState(() => {
-        // use initial value if included
-        if (tabs.hasOwnProperty('initial')) return tabs.initial
-        // get first tab left to right
-        for (let item of Object.entries({...tabs.left, ...tabs.center, ...tabs.right})) {
-            if (item[1].type !== 'basic') return item[0]
-        }
-    })
-
-    useImperativeHandle(
-        imperative,
-        () => {return {
-            updateActive: (x) => {setActiveTab(x)}
-        }},
-        []
-    )
-
     //TODO: possibly add 'gap' element between sections to provide bottom border
     //TODO: if possible combine shared check into initial formatting (might not be possible though)
-
+    //TODO: prevent disabled and hidden tabs from being auto selected when no initial tab is specified
 
     useEffect(() => {
-        if (activeTabSetter === undefined) return
-        activeTabSetter(activeTab)
-    }, [activeTab])
+        if (activeTab === null) {
+            // use initial value if included
+            setActiveTab(() => {
+                if (tabs.hasOwnProperty('initial')) return tabs.initial
+                // get first tab left to right
+                //NOTE: this code might be a bit buggy so I recommend including an initial tab just in case
+                for (let item of Object.entries({...tabs.left, ...tabs.center, ...tabs.right})) {
+                    if (item[1].type !== 'basic') return item[0]
+                }
+            })
+        }
+    }, [])
+    // useEffect(() => {
+    //     if (activeTabSetter === undefined) return
+    //     activeTabSetter(activeTab)
+    // }, [activeTab])
 
-    return (
+    return (activeTab !== null &&
         <section className={`tabs ${tabs.classAppend.root}`}>
             <div className="tabs__header">
                 {['left', 'center', 'right'].map((section) => {
@@ -128,21 +124,16 @@ function Tabs({activeTabSetter, tabs}, imperative) {
     )
 }
 
-export default forwardRef(Tabs)
-
 
 // USAGE //////////////////////////////////////////////////
 function Example() {
-    const [active, setActive] = useState()
-    const imperativeTabs = useRef()
+    const [active, setActive] = useState(null)  // provide an initial state or pass in null to automatically pull it from tabs
+    //NOTE: if given null, tabs will first check for an initial prop, then move to use the left-most tab id (excluding 'basic' type tabs)
     return (
         <Tabs 
             // (opt.) state setter for tracking the current active tab id
-            activeTabSetter={setActive}
-
-            // (opt.) imperative handle ref for passing up functions for the parent to call
-            ref={imperativeTabs}
-            // more info on methods passed up below (in 'imperative' tab)
+            activeTab={active}
+            setActiveTab={setActive}
 
             // initial tabs data passed in object
             tabs={{
@@ -214,19 +205,6 @@ function Example() {
                         type: 'tab',
                         component: <p>This won't be seen</p>
                     },
-
-                    // using imperative handles
-                    imperative: {
-                        type: 'tab',
-                        component: (
-                            <>
-                                {/* update active tab from parent of Tabs component */}
-                                <button onClick={
-                                    () => imperativeTabs.current.updateActive('normal')
-                                }>Go to first tab</button>
-                            </>
-                        )
-                    }
                 },
 
                 // same formats for tab objects in the other sections

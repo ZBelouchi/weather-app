@@ -12,6 +12,7 @@ html
     font-family: sans-serif
     text-align: center
     // background: lightblue
+    height: 100%
 
 img
     max-width: 100%  
@@ -62,30 +63,28 @@ hr
             flex-direction: column-reverse
     &__list
         display: flex
-        z-index: 1
         &--left
         &--center
         &--right
     &__tab
-        padding: 0.5em
-        // background: $black
-        @include blurred-overlay($base-color: black)
+        @include blurred-overlay($base-color: $darkblue)
         color: white
+        padding: 0.5em
+        z-index: 2
         &--active
-            // background: $blue
             @include blurred-overlay($base-color: $blue)
+            z-index: 3
+        &--basic
+            z-index: 0
         @include sm
             &--active
                 border-bottom: none
-                z-index: 1
             &--basic
                 border-bottom: none
-                z-index: 0
     &__body
-        z-index: 2
-        // border: 2px solid teal
+        position: relative
+        z-index: 1
         border-top: none
-        // background: $blue
         @include blurred-overlay($base-color: $blue)
 
 // Modal
@@ -107,6 +106,7 @@ hr
         background-color: #00000098
         z-index: 1000
 
+// Sky Background
 .sky
     position: relative
     transition: background 1s ease
@@ -119,9 +119,12 @@ hr
     &--dawn
         background-image: $dawn
 
+// Weather (Root)
 .weather
+    min-height: 100vh
     &__tab
 
+// Condition
 .condition
     width: fit-content
     &__description
@@ -137,16 +140,16 @@ hr
         width: 100%
         height: 100%
         @include center
- 
+
+// Current Weather
 .current
+    min-height: 24em
     &__top
-        // @include debug(gray)
         display: flex
         justify-content: space-around
-        padding: 2em 0
+        padding: 1.5em 0
     &__column
-        // @include debug(lime)
-        width: fit-content
+        width: 200px
         display: flex
         flex-direction: column
         align-items: center
@@ -156,7 +159,6 @@ hr
             align-self: center
         &--condition
     &__main
-        // @include debug(red)
         min-height: 7em
     &__temp
         font-size: 5rem
@@ -165,10 +167,9 @@ hr
         sup
             font-size: 0.5em
     &__sub
-        // @include debug(blue)
     &__divider
     &__list
-        padding: 2em
+        padding: 1.5em
 
         display: flex
         flex-wrap: wrap
@@ -182,17 +183,17 @@ hr
             flex-direction: row
             &:nth-last-child(even)
                 flex-direction: row-reverse
-
     &__stat-icon
-        width: 3em
-        height: 3em
+        width: 2.8em
+        height: 2.8em
         margin: 0.2em
     &__stat-value
         align-self: center
         width: fit-content
 
-        
+// Weather Groups      
 .daily, .hourly
+    min-height: 12em
     display: flex
     overflow-x: scroll
     padding: 0.5em
@@ -224,8 +225,10 @@ hr
             height: 1em
         p
 
-
+// Location Select Modal
 .select
+    width: 30em
+    min-height: 400px
     &--add
     &--modify
     &__header
@@ -241,6 +244,14 @@ hr
         &:hover
             background: teal
     
+// Loading
+.loading
+    &__img
+        @include center
+        opacity: 0.5
+        img
+            width: 5em
+            height: 5em
 
 @include sm
     .row

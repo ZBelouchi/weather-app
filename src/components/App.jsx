@@ -13,10 +13,8 @@ import IMAGES from '../assets/images'
 
 //TODO: format and apply data for new units (wind, uv, etc.)
 
-//TODO: replace imperative handle with some other method of passing up an update method so both Tabs components can use the same one (causes weather tab not switching when active tab is deleted and fatal error if that active tab is position 0)
 //TODO: make search a deferred value to prevent excessive API calls
 //TODO: possibly refine location data checks using regex
-//TODO: add local storage to remember forecasted locations between refreshes
 //TODO: add options modal with unit swapper (US-Metric) and time zone display changer
 
 export default function App() {
@@ -26,34 +24,36 @@ export default function App() {
     const [modifyModal, toggleModifyModal] = useToggle(false)
     const [addModal, toggleAddModal] = useToggle(false)
     const [activeMain, setActiveMain] = useState(0)
-    const imperativeMain = useRef()
-    const {array: locationData, set: setLocationData, update: updateLocationData, remove: removeLocationData, push: pushLocationData} = useArray([
-        {
-            lat: 39.44034,
-            lon: -84.36216,
-            timezone: "America/New_York",
-            name: "Gooberville",
-            country: "United States",
-            admin: ['Somewhere', 'Here', 'A Township'],
-        },
-        {
-            // lat:  44.91656,
-            // lon: 7.46719,
-            // timezone: "Europe/Rome",
-            // name: "Skf Industrie S.P.A.",
-            // country: "Italy",
-            // admin: ['Piedmont', 'Turin', 'Airasca'],
-        },
-        {
-            // lat: 3.07014,
-            // lon: 27.48309,
-            // timezone: "Africa/Lubumbashi",
-            // name: "We",
-            // country: "DR Congo",
-            // admin: ['Bas-Uele', 'Poko'],
-        }
-    ])
+    const [activeGroups, setActiveGroups] = useState(null)
+    const [activeModify, setActiveModify] = useState(null)
 
+    const {array: locationData, set: setLocationData, update: updateLocationData, remove: removeLocationData, push: pushLocationData} = useArray([{},{},{}])
+    // const {array: locationData, set: setLocationData, update: updateLocationData, remove: removeLocationData, push: pushLocationData} = useArray([
+    //     {
+    //         lat: 39.44034,
+    //         lon: -84.36216,
+    //         timezone: "America/New_York",
+    //         name: "Gooberville",
+    //         country: "United States",
+    //         admin: ['Somewhere', 'Here', 'A Township'],
+    //     },
+    //     {
+    //         lat:  44.91656,
+    //         lon: 7.46719,
+    //         timezone: "Europe/Rome",
+    //         name: "Skf Industrie S.P.A.",
+    //         country: "Italy",
+    //         admin: ['Piedmont', 'Turin', 'Airasca'],
+    //     },
+    //     {
+    //         // lat: 3.07014,
+    //         // lon: 27.48309,
+    //         // timezone: "Africa/Lubumbashi",
+    //         // name: "We",
+    //         // country: "DR Congo",
+    //         // admin: ['Bas-Uele', 'Poko'],
+    //     }
+    // ])
     const weatherData = useAsyncCached(
         () => {
             if (JSON.stringify(locationData) === "[{},{},{}]") {
@@ -163,8 +163,8 @@ export default function App() {
                     }
                 })
         },
-        // [locationData, activeMain]
-        [locationData, activeMain, dt]
+        [locationData, activeMain]
+        // [locationData, activeMain, dt]
     )
 
     // bring up add location modal if no locations are set
@@ -211,117 +211,140 @@ export default function App() {
         setSkyClass(sky)
     }, [dt])
 
-    console.log("sent", skyClass);
     return (
         // <main className={`sky--${skyClass}`}>
         <main className={`weather sky--${skyClass}`}>
             {/* Current Forecast */}
-            <Tabs ref={imperativeMain} activeTabSetter={setActiveMain} tabs={{
-                classAppend: {
-                    root: "container",
-                    left: "tabs__list--row"
-                },
-                left: {
-                    0: {
-                        isHidden: Object.entries(locationData[0]).length === 0 ? true : false,
-                        type: 'tab-alt',
-                        alt: <WeatherTab location={locationData[0]} />,
-                        component: <Weather locations={locationData} data={weatherData}/>,
-                        onActive: toggleModifyModal,
+            <Tabs 
+                activeTab={activeMain}
+                setActiveTab={setActiveMain}
+                tabs={{
+                    classAppend: {
+                        root: "container",
+                        left: "tabs__list--row"
                     },
-                    1: {
-                        isHidden: Object.entries(locationData[1]).length === 0 ? true : false,
-                        type: 'tab-alt',
-                        alt: <WeatherTab location={locationData[1]} />,
-                        component: <Weather locations={locationData} data={weatherData}/>,
-                        onActive: toggleModifyModal
-                    },
-                    2: {
-                        isHidden: Object.entries(locationData[2]).length === 0 ? true : false,
-                        type: 'tab-alt',
-                        alt: <WeatherTab location={locationData[2]} />,
-                        component: <Weather locations={locationData} data={weatherData}/>,
-                        onActive: toggleModifyModal
-                    },
-                    add: {
-                        isHidden: !JSON.stringify(locationData).includes("{}"),
-                        type: 'basic',
-                        component: <button onClick={toggleAddModal}>+</button>
-                    }
-                },
-                right: {
-                    clock: {
-                        type: 'basic',
-                        component: (
-                            <>
-                                <p>{dtFormat('dddd LL')}</p>
-                                <h2>{dtFormat('HH:mm:ss')}</h2>
-                                <p>{dtTz}</p>
-                            </>
-                        )
-                    }
-                }
-            }}/>
-            {/* Future Forecast */}
-            <Tabs tabs={{
-                classAppend: {
-                    root: "container",
-                },
-                left: {
-                    daily: {
-                        type: 'tab-alt',
-                        alt: "Daily",
-                        component: <WeatherDaily locations={locationData} data={weatherData} datetime={dt}/>,
-                    },
-                    hourly: {
-                        type: 'tab-alt',
-                        alt: "Hourly",
-                        component: <WeatherHourly locations={locationData} data={weatherData} datetime={dt}/>
-                    }
-                }
-            }}/>
-
-            {/* Modify Modal */}
-            <Modal visible={modifyModal} toggle={toggleModifyModal}>
-                <Tabs tabs={{
-                    shared: {
-                        end: <button onClick={toggleModifyModal}>cancel</button>
+                    left: {
+                        0: {
+                            isHidden: Object.entries(locationData[0]).length === 0 ? true : false,
+                            type: 'tab-alt',
+                            alt: <WeatherTab location={locationData[0]} />,
+                            component: <Weather locations={locationData} data={weatherData}/>,
+                            onActive: toggleModifyModal,
+                        },
+                        1: {
+                            isHidden: Object.entries(locationData[1]).length === 0 ? true : false,
+                            type: 'tab-alt',
+                            alt: <WeatherTab location={locationData[1]} />,
+                            component: <Weather locations={locationData} data={weatherData}/>,
+                            onActive: toggleModifyModal
+                        },
+                        2: {
+                            isHidden: Object.entries(locationData[2]).length === 0 ? true : false,
+                            type: 'tab-alt',
+                            alt: <WeatherTab location={locationData[2]} />,
+                            component: <Weather locations={locationData} data={weatherData}/>,
+                            onActive: toggleModifyModal
+                        },
+                        add: {
+                            isHidden: JSON.stringify(locationData) === "[{},{},{}]" || !JSON.stringify(locationData).includes("{}"),
+                            type: 'basic',
+                            component: <button onClick={toggleAddModal}>+</button>
+                        }
                     },
                     right: {
-                        change: {
-                            type: 'tab',
+                        clock: {
+                            isHidden: JSON.stringify(locationData) === "[{},{},{}]",
+                            type: 'basic',
                             component: (
-                                <div className="select select--modify">
-                                    <h2 className="select__header">Change Location?</h2>
-                                    <LocationSearch data={locationData} set={(x) => updateLocationData(activeMain, x)} toggleModal={toggleModifyModal}/>
-                                </div>
-                            ),
-                        },
-                        delete: {
-                            isDisabled: JSON.stringify([...locationData]).endsWith(",{},{}]"),
-                            type: 'tab',
-                            component: (
-                                <div>
-                                    <h2>Stop Forecasting this location?</h2>
-                                    <button 
-                                        onClick={() => {
-                                            // add new {} to the end
-                                            pushLocationData({})
-                                            // remove the entire {} from the location data list
-                                            removeLocationData(Number(activeMain))
-                                            // move active left (-1) if new active tab has no corresponding data
-                                            if ([...locationData, {}][activeMain] !== {}) {
-                                                setActiveMain(activeMain - 1)
-                                            }
-                                            // close modal
-                                            toggleModifyModal()
-                                        }}
-                                    >Confirm</button>
-                                </div>
+                                <>
+                                    <p>{dtFormat('dddd LL')}</p>
+                                    <h2>{dtFormat('HH:mm:ss')}</h2>
+                                    <p>{dtTz}</p>
+                                </>
                             ),
                         }
                     }
-                }}/>
+                }}
+            />
+            {/* Future Forecast */}
+            {!(JSON.stringify(locationData) === "[{},{},{}]") &&
+                <Tabs 
+                    activeTab={activeGroups}
+                    setActiveTab={setActiveGroups}
+                    tabs={{
+                        initial: 'daily',
+                        classAppend: {
+                            root: "container",
+                        },
+                        left: {
+                            daily: {
+                                type: 'tab-alt',
+                                alt: "Daily",
+                                component: <WeatherDaily locations={locationData} data={weatherData} datetime={dt}/>,
+                            },
+                            hourly: {
+                                type: 'tab-alt',
+                                alt: "Hourly",
+                                component: <WeatherHourly locations={locationData} data={weatherData} datetime={dt}/>
+                            }
+                        }
+                    }}
+                />
+            }
+
+            {/* Modify Modal */}
+            <Modal visible={modifyModal} toggle={toggleModifyModal}>
+                <Tabs 
+                    activeTab={activeModify}
+                    setActiveTab={setActiveModify}
+                    tabs={{
+                        shared: {
+                            end: <button onClick={toggleModifyModal}>cancel</button>
+                        },
+                        right: {
+                            change: {
+                                type: 'tab',
+                                component: (
+                                    <div className="select select--modify">
+                                        <h2 className="select__header">Change Location?</h2>
+                                        <LocationSearch data={locationData} set={(x) => updateLocationData(activeMain, x)} toggleModal={toggleModifyModal}/>
+                                    </div>
+                                ),
+                            },
+                            delete: {
+                                isDisabled: JSON.stringify(locationData).endsWith(",{},{}]"),
+                                type: 'tab',
+                                component: (
+                                    <div>
+                                        <h2>Stop Forecasting this location?</h2>
+                                        <button 
+                                            onClick={() => {
+                                                // move active left (-1) if new active tab has no corresponding data
+                                                if (
+                                                    JSON.stringify([
+                                                        ...[...locationData, {}].slice(0, Number(activeMain)),
+                                                        ...[...locationData, {}].slice(Number(activeMain) + 1, [...locationData, {}].length)
+                                                    ][activeMain]) === '{}'
+                                                ) {
+                                                    console.log("move");
+                                                    setActiveMain(String(activeMain - 1))
+                                                }
+                                                // add new {} to the end
+                                                pushLocationData({})
+                                                // remove the entire {} from the location data list
+                                                removeLocationData(Number(activeMain))
+                                                // reset tab state
+                                                setActiveModify(null)
+                                                // close modal
+                                                toggleModifyModal()
+                                            }}
+                                        >Confirm</button>
+                                    </div>
+                                ),
+                            }
+                        }
+                    }}
+                />
             </Modal>
             {/* Add Modal */}
             <Modal visible={addModal} toggle={toggleAddModal} disableClickOff>
@@ -335,7 +358,7 @@ export default function App() {
                                 newIndex, 
                                 x
                             )
-                            imperativeMain.current.updateActive(String(newIndex))
+                            setActiveMain(String(newIndex))
                         }} 
                         toggleModal={toggleAddModal}
                     />
@@ -344,10 +367,17 @@ export default function App() {
                         <button className="select__btn" onClick={toggleAddModal}>cancel</button>
                     }
                 </div>
-                
-            
             </Modal>
         </main>
+    )
+}
+function Loading() {
+    return (
+        <div className="loading">
+            <div className="loading__img">
+                <img src={IMAGES.loading} alt="loading wheel" />
+            </div>
+        </div>
     )
 }
 function LocationSearch({data, set, toggleModal}) {
@@ -359,6 +389,7 @@ function LocationSearch({data, set, toggleModal}) {
         inputRef.current.focus()
     }, [])
     useEffect(() => {
+        setResults('loading')
         fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${search}&count=100`, {method: 'GET'})
         .then(res => res.json())
         .then(json => {
@@ -379,9 +410,9 @@ function LocationSearch({data, set, toggleModal}) {
                         onChange={e => setSearch(e.target.value)}
                     />
             </div>
-            {results.length > 0 &&
+            {search.length > 0 &&
                 <ul className="select__list">
-                    {results.map(result => {
+                    {results === 'loading' ? <Loading /> : results.map(result => {
                         if ([result.name, result.country, result.latitude, result.longitude, result.timezone].includes(undefined)) {
                             return null
                         }
@@ -603,7 +634,8 @@ function WeatherTab({location}) {
 }
 function Weather({locations, data}) {
     if (JSON.stringify(locations) === "[{},{},{}]") return null
-    if (data === null | data === undefined) return "loading"
+    if (data === null | data === undefined) return <div className="current"><Loading /></div>
+    // if (true) return <div className="current"><Loading /></div>
     if (data instanceof Error) return (
         <>
             <h2>Something went wrong!</h2>
@@ -683,7 +715,8 @@ function Weather({locations, data}) {
 }
 function WeatherDaily({locations, data, datetime}) {
     if (JSON.stringify(locations) === "[{},{},{}]") return null
-    if (data === null | data === undefined) return "loading"
+    if (data === null | data === undefined) return <div className="daily"><Loading /></div>
+    // if (true) return <div className="daily"><Loading /></div>
     if (data instanceof Error) return (
         <>
             <h2>Something went wrong!</h2>
@@ -707,7 +740,7 @@ function WeatherDaily({locations, data, datetime}) {
 }
 function WeatherHourly({locations, data, datetime}) {
     if (JSON.stringify(locations) === "[{},{},{}]") return null
-    if (data === null | data === undefined) return "loading"
+    if (data === null | data === undefined) return <div className="hourly"><Loading /></div>
     if (data instanceof Error) return (
         <>
             <h2>Something went wrong!</h2>
