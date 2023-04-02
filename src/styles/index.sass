@@ -6,13 +6,36 @@
 *, *::before, *::after
     box-sizing: border-box
     margin: 0
+
 html
-    font-size: 1rem
-    color: white
+    font-size: 10px
+    @include sm
+        font-size: 12px
+    @include md
+        font-size: 16px
+    color: $white
     font-family: sans-serif
     text-align: center
-    // background: lightblue
     height: 100%
+
+* //scrollbar
+    // Firefox
+    scrollbar-color: transparent transparentize($black, 0.65)
+    scrollbar-width: 0.65em
+    &:hover
+        scrollbar-color: transparentize($black, 0.85) transparentize($black, 0.65)
+        
+    // Other Browsers
+    &::-webkit-scrollbar
+        width: 0.65rem
+        height: 0.65rem       
+    &::-webkit-scrollbar-track
+        background-color: transparent
+        &:hover
+            background-color: transparentize($black, 0.85)
+    &::-webkit-scrollbar-thumb
+        background-color: transparentize($black, 0.65)
+        border-radius: 8px
 
 img
     max-width: 100%  
@@ -22,90 +45,41 @@ ul
     padding: 0
 li
 
-// for testing visuals of breakpoints
-// @include xs
-    // .fake
-    //     width: 100%
-@include sm
-    .fake
-        width: 100%
-@include md
-    .fake
-        width: 100%
-@include lg
-    .fake
-        width: 100%
-@include xl
-    .fake
-        width: 100%
-
-button, .btn
-    border: 2px outset grey
+button
+    background: $teal
+    $color: $black
+    border-color: darken($teal, 15)
+.btn
+    background: $teal
+    $color: $black
+    border-color: darken($teal, 15)
+    border-radius: 8px
+    font-size: 1.5rem
+    padding: 0.1em 0.5em
+    margin: 0.4em
+    &:hover
+        background-color: lighten($teal, 8)
+    &:active
+        background-color: darken($teal, 15)
+    &--red
+        color: white
+        background-color: $red
+        border-color: darken($red, 0.15)
+        &:hover
+            background-color: lighten($red, 8)
+        &:active
+            background-color: darken($red, 15)
 
 hr
     width: 60%
-    margin: auto
+    margin: 0.5em auto
+    border-radius: 8px
+    background-color: $white
 
-// Universal
-.container
-    width: 90%
-    max-width: 1100px
-    margin: auto
-    // background: $darkblue
-    padding: 1em
-
-// Tabs
-.tabs
-    &__header
-        display: flex
-        justify-content: space-between
-        @include xs
-            flex-direction: column-reverse
-    &__list
-        display: flex
-        &--left
-        &--center
-        &--right
-    &__tab
-        @include blurred-overlay($base-color: $darkblue)
-        color: white
-        padding: 0.5em
-        z-index: 2
-        &--active
-            @include blurred-overlay($base-color: $blue)
-            z-index: 3
-        &--basic
-            z-index: 0
-        @include sm
-            &--active
-                border-bottom: none
-            &--basic
-                border-bottom: none
-    &__body
-        position: relative
-        z-index: 1
-        border-top: none
-        @include blurred-overlay($base-color: $blue)
-
-// Modal
-.modal
-    &__box
-        position: fixed
-        top: 50%
-        left: 50%
-        translate: -50% -50%
-        z-index: 1001
-        background-color: gray
-        border: 2px solid black
-    &__overlay
-        position: fixed
-        top: 0
-        left: 0
-        right: 0
-        bottom: 0
-        background-color: #00000098
-        z-index: 1000
-
+// Weather (Root)
+.weather
+    min-height: 100vh
+    
 // Sky Background
 .sky
     position: relative
@@ -119,10 +93,117 @@ hr
     &--dawn
         background-image: $dawn
 
-// Weather (Root)
-.weather
-    min-height: 100vh
+// Universal
+.container
+    width: 90%
+    max-width: 1100px
+    margin: auto
+    padding: 1em
+
+// Tabs
+.tabs
+    &__header
+        display: flex
+        justify-content: space-between
+        flex-direction: column-reverse
+        @include md
+            flex-direction: row
+
+    &__list
+        display: flex
+        &--left
+            .tabs__tab:first-of-type
+                border-left: none
+        &--center
+        &--right
+        
     &__tab
+        color: $white
+        font-weight: 600
+        font-size: 1rem
+        padding: 0.4em
+        z-index: 2
+        border-width: 1px
+        &--active
+            z-index: 3
+            border-bottom: none
+        &--basic
+            font-weight: normal
+            z-index: 0
+            display: flex
+            align-items: center
+        &:disabled
+            color: transparentize($white, .75)
+            background-color: $darkblue
+            border-color: $darkblue
+        
+    &__body
+        position: relative
+        z-index: 1
+        border-top: none
+
+// Modal
+.modal
+    &__box
+        position: fixed
+        top: 50%
+        left: 50%
+        translate: -50% -50%
+        z-index: 1001
+        // background-color: $blue
+        width: 60%
+        max-width: 600px
+    &__overlay
+        position: fixed
+        top: 0
+        left: 0
+        right: 0
+        bottom: 0
+        // background-color: #00000098
+        @include blurred-overlay($base-color: #1a1a1d)
+        z-index: 1000
+
+// Location Select and Delete Modals
+.select, .delete
+    background-color: $blue
+    color: $white
+    padding: 1em
+    min-height: 8em
+    &__tab
+        background-color: $lightblue
+        border-color: lighten($lightblue, 15)
+        &.tabs__tab--active
+            background-color: $blue
+            border-color: lighten($blue, 15)
+        &.tabs__tab--basic
+    &--add
+    &--modify
+
+    &__header
+    &__search
+        margin: 0.5em
+        display: flex
+    &__label
+        width: 15%
+    &__input
+        width: 100%
+
+    &__list
+        color: $black
+        background: darken($teal, 5)
+        height: 500px
+        overflow-y: scroll
+        border: 3px inset $black
+        padding: 0.5em
+    &__item
+        border: 2px outset darken($teal, 10)
+        background: lighten($tan, 5)
+        padding: 0.5em
+        &:hover
+            background: lighten($teal, 8)
+        &:active
+            border-style: inset
+            background: darken($teal, 15)
 
 // Condition
 .condition
@@ -143,13 +224,28 @@ hr
 
 // Current Weather
 .current
-    min-height: 24em
+    min-height: 20em
+    @include blurred-overlay($base-color: $blue)
+    padding: 1em
+    &__tab
+        @include blurred-overlay($base-color: $lightblue)
+        border-color: transparentize(lighten($lightblue, 15), 0.25)
+        &.tabs__tab--active
+            @include blurred-overlay($base-color: $blue)
+            border-color: transparentize(lighten($blue, 15), 0.25)
+        &.tabs__tab--basic
+    &__tab-content
+        p
+            font-weight: normal
     &__top
         display: flex
-        justify-content: space-around
-        padding: 1.5em 0
+        justify-content: space-between
+        margin: auto
+        width: 100%
+        @include sm
+            width: 65%
     &__column
-        width: 200px
+        width: 10.5em
         display: flex
         flex-direction: column
         align-items: center
@@ -160,29 +256,35 @@ hr
         &--condition
     &__main
         min-height: 7em
+        display: flex
+    &__sub
+        font-size: 1.2rem
+
     &__temp
-        font-size: 5rem
-        &--small
-            font-size: 0.25em
+        align-self: end
+        font-size: 5.2rem
         sup
             font-size: 0.5em
-    &__sub
+        span
+            font-size: 0.35em
+        &--alt
+            font-size: 1.2rem
+            sup
+                font-size: 0.70em
     &__divider
-    &__list
-        padding: 1.5em
-
+    &__stats
+        font-size: 1.2rem
         display: flex
         flex-wrap: wrap
-    &__item
+    &__stat
         display: flex
         flex-direction: column
         width: 50%
         align-items: center
         margin: auto
-        @include sm
-            flex-direction: row
-            &:nth-last-child(even)
-                flex-direction: row-reverse
+        flex-direction: row
+        &:nth-last-child(even)
+            flex-direction: row-reverse
     &__stat-icon
         width: 2.8em
         height: 2.8em
@@ -197,6 +299,14 @@ hr
     display: flex
     overflow-x: scroll
     padding: 0.5em
+    @include blurred-overlay($base-color: $blue)
+    &__tab
+        @include blurred-overlay($base-color: $lightblue)
+        border-color: transparentize(lighten($lightblue, 15), 0.25)
+        &.tabs__tab--active
+            @include blurred-overlay($base-color: $blue)
+            border-color: transparentize(lighten($blue, 15), 0.25)
+        &.tabs__tab--basic
     &__box
         display: flex
         flex-direction: column
@@ -204,46 +314,64 @@ hr
         padding: 0.5em
         border: 2px outset gray
         border-radius: 8px
-    .daily__box
-        width: 100%
-    .hourly__cell
+    &__cell
+        @include blurred-overlay($blue)
         display: inline-block
-        min-width: 7em
+        & + &
+            margin-left: 0.2em 
+    .daily__cell
+        width: 100%
+        min-width: 8em
+    .hourly__cell
+        min-width: 9.27em
     &__header
-        word
         &--top
         &--bottom
     &__condition
     &__divider
-    &__temperature
-    &__stat
+    &__stats
+        // outline: 2px solid lime
         display: flex
-        width: fit-content
+        flex-wrap: wrap
+    &__stat
+        // outline: 2px solid blue
+        display: flex
+        width: 50%
         margin: auto
         img
+            // outline: 2px solid cyan
             width: 1em
             height: 1em
+            margin-right: 0.3em
         p
-
-// Location Select Modal
-.select
-    width: 30em
-    min-height: 400px
-    &--add
-    &--modify
-    &__header
-    &__input
-    &__btn
-    &__search
-    &__list
-        max-height: 500px
-        overflow-y: scroll
-    &__item
-        border: 2px solid blue
-        padding: 0.5em
-        &:hover
-            background: teal
     
+
+// Add
+.add
+    background: transparent
+    border: none
+    width: 5em
+    height: 5em
+    &:hover
+        background: transparent
+    img
+        opacity: 0.90
+        
+// Clock
+.clock
+    @include blurred-overlay($darkblue)
+    border-radius: 8px
+    padding: 1em
+    min-width: 10em
+    align-self: end
+    &__date
+        font-weight: bold
+        font-size: 1.2rem
+    &__time
+        font-size: 1.8rem
+    &__tz
+        font-weight: normal
+
 // Loading
 .loading
     &__img
@@ -252,162 +380,3 @@ hr
         img
             width: 5em
             height: 5em
-
-@include sm
-    .row
-        display: flex
-
-
-
-
-
-
-
-
-
-
-
-// /////////////////////////////////
-// // Universal
-// .container
-//     width: 90%
-//     max-width: 1100px
-//     margin: auto
-//     background: $darkblue
-//     padding: 1em
-
-// // Tabs
-// .tabs
-//     &__header
-//         display: flex
-//         justify-content: space-between
-//         // @include debug(lime)
-//     &__list
-//         display: flex
-//         &--left
-//         &--center
-//         &--right
-//         &--row
-//             @include xs
-//                 flex-direction: column-reverse
-//     &__tab
-//         // border: 2px solid teal
-//         // @include debug(magenta)
-//         padding: 0.5em
-//         background: $darkblue
-//         color: white
-//         &--active
-//             background: $blue
-//         @include sm
-//             &--active
-//                 border-bottom: none
-//             &--basic
-//                 border-bottom: none
-//     &__body
-//         // border: 2px solid teal
-//         border-top: none
-//         background: $blue
-
-// // Modal
-// .modal
-//     &__box
-//         position: fixed
-//         top: 50%
-//         left: 50%
-//         translate: -50% -50%
-//         z-index: 1001
-//         background-color: gray
-//         border: 2px solid black
-//     &__overlay
-//         position: fixed
-//         top: 0
-//         left: 0
-//         right: 0
-//         bottom: 0
-//         background-color: #00000098
-//         z-index: 1000
-
-
-// .weather
-//     &__tab
-
-// .condition
-//     // padding: 0.5em
-//     @include debug(blue)
-//     width: fit-content
-//     &__description
-//         // width: fit-content
-// .icon
-//     position: relative
-//     width: 5em
-//     height: 5em
-//     &--main
-//         width: 7em
-//         height: 7em
-//     &__layer
-//         width: 100%
-//         height: 100%
-//         @include center
-//         &--recentered
-//             translate: -50% -25%
-//             scale: 1.3
- 
-// .current
-//     &__main
-//         // display: flex
-//         // justify-content: space-around
-//         // font-size: 2rem
-//         // padding: 0.5em
-//     &__main-column
-//         // width: fit-content
-//         // margin: auto
-//         // justify-content: space-around
-//     &__temp-main
-//         // font-size: 3.5em
-//         sup
-//             // font-size: 0.5em
-//     &__temp-sub
-//     &__divider
-//         // width: 50%
-//         // margin: auto
-//     &__list
-//         // padding: 1em
-//         // justify-content: space-around
-//         // flex-wrap: wrap
-//         // width: fit-content
-//         // margin: auto
-//     &__item
-//         // @include sm
-//         //     width: 50%
-//         // margin: auto
-        
-
-        
-// .daily, .hourly
-//     // display: flex
-//     // overflow: scroll
-//     // height: 200px
-//     &__box
-//         // @include debug(white)
-//         // padding: 0.5em
-//         // min-width: 8em
-
-
-// .select
-//     &__header
-//     &__search
-//     &__input
-//     &__list
-//         // max-height: 300px
-//         // overflow: scroll
-//     &__item
-//         // padding: 0.5em
-//         // display: flex
-//         // justify-content: space-around
-//         // *
-//         //     width: 10em
-//         &:hover
-//             // background: $blue
-    
-//     &--add
-//     // &--modify

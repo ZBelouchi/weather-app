@@ -47,10 +47,6 @@ export default function Tabs({activeTab, setActiveTab, tabs}) {
             })
         }
     }, [])
-    // useEffect(() => {
-    //     if (activeTabSetter === undefined) return
-    //     activeTabSetter(activeTab)
-    // }, [activeTab])
 
     return (activeTab !== null &&
         <section className={`tabs ${tabs.classAppend.root}`}>

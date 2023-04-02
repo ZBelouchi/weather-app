@@ -11,16 +11,10 @@ import Modal from "./Modal"
 
 import IMAGES from '../assets/images'
 
-//TODO: format and apply data for new units (wind, uv, etc.)
-
-//TODO: make search a deferred value to prevent excessive API calls
-//TODO: possibly refine location data checks using regex
-//TODO: add options modal with unit swapper (US-Metric) and time zone display changer
-
 export default function App() {
     const {dt, dtTz, dtTime, dtDate, dtOffset, dtFormat, dtChangeTz} = useDatetime()
     const sunTimes = useRef({rise: undefined, set: undefined})
-    const [skyClass, setSkyClass] = useState('huh')
+    const [skyClass, setSkyClass] = useState('day')
     const [modifyModal, toggleModifyModal] = useToggle(false)
     const [addModal, toggleAddModal] = useToggle(false)
     const [activeMain, setActiveMain] = useState(0)
@@ -58,8 +52,6 @@ export default function App() {
         () => {
             if (JSON.stringify(locationData) === "[{},{},{}]") {
                 return Promise.reject(new Error(`Coordinates not available in slot ${activeMain}`))
-                // console.error(`Coordinates not available in slot ${activeMain}`)
-                // return Promise.reject()
             }
 
             const url = "https://api.open-meteo.com/v1/forecast?" + [
@@ -68,7 +60,9 @@ export default function App() {
                 `hourly=`+[
                     `temperature_2m`,
                     `weathercode`,
-                    `relativehumidity_2m`
+                    `relativehumidity_2m`,
+                    `precipitation_probability`,
+                    `uv_index`
                 ].join(','),
                 `daily=`+[
                     `weathercode`,
@@ -93,10 +87,10 @@ export default function App() {
                     // console.log(json)
 
                     let sunrises = json.daily.sunrise
-                    sunTimes.current.rise = dayjs(sunrises[0], "YYYY-MM-DDTHH:mm").tz(dtTz)
-
+                    sunTimes.current.rise = dayjs(sunrises[0], "YYYY-MM-DDTHH:mm").tz(dtTz, true)
+                    
                     let sunsets = json.daily.sunset
-                    sunTimes.current.set = dayjs(sunsets[0], "YYYY-MM-DDTHH:mm").tz(dtTz)
+                    sunTimes.current.set = dayjs(sunsets[0], "YYYY-MM-DDTHH:mm").tz(dtTz, true)
 
                     let hourlyData = json.hourly.time.map((hour, index) => {
                         let sunIndex = sunrises.map(
@@ -110,8 +104,10 @@ export default function App() {
                             condition: json.hourly.weathercode[index],
                             temperature: json.hourly.temperature_2m[index],
                             humidity: json.hourly.relativehumidity_2m[index],
-                            sunrise: dayjs(sunrises[sunIndex], "YYYY-MM-DDTHH:mm").tz(dtTz),
-                            sunset: dayjs(sunsets[sunIndex], "YYYY-MM-DDTHH:mm").tz(dtTz),
+                            precipitation: json.hourly.precipitation_probability[index],
+                            uvIndex: json.hourly.uv_index[index], 
+                            sunrise: dayjs(sunrises[sunIndex], "YYYY-MM-DDTHH:mm").tz(dtTz, true),
+                            sunset: dayjs(sunsets[sunIndex], "YYYY-MM-DDTHH:mm").tz(dtTz, true),
                         }
                     })
 
@@ -143,8 +139,8 @@ export default function App() {
                             uvIndex: 0,         // new
                             precipitation: 0,   // new
                             dtObj: dt,
-                            sunrise: dayjs(sunrises[0], "YYYY-MM-DDTHH:mm").tz(dtTz),
-                            sunset: dayjs(sunsets[0], "YYYY-MM-DDTHH:mm").tz(dtTz),
+                            sunrise: dayjs(sunrises[0], "YYYY-MM-DDTHH:mm").tz(dtTz, true),
+                            sunset: dayjs(sunsets[0], "YYYY-MM-DDTHH:mm").tz(dtTz, true),
                         },
                         daily: json.daily.time.map((day, index) => {
                             return {
@@ -155,16 +151,16 @@ export default function App() {
                                     low: json.daily.temperature_2m_min[index]
                                 },
                                 condition: json.current_weather.weathercode,
-                                sunrise: dayjs(sunrises[index], "YYYY-MM-DDTHH:mm").tz(dtTz),
-                                sunset: dayjs(sunsets[index], "YYYY-MM-DDTHH:mm").tz(dtTz)
+                                sunrise: dayjs(sunrises[index], "YYYY-MM-DDTHH:mm").tz(dtTz, true),
+                                sunset: dayjs(sunsets[index], "YYYY-MM-DDTHH:mm").tz(dtTz, true)
                             }
                         }).slice(1),
                         hourly: hourlyData
                     }
                 })
         },
-        [locationData, activeMain]
-        // [locationData, activeMain, dt]
+        // [locationData, activeMain]
+        [locationData, activeMain, dt]
     )
 
     // bring up add location modal if no locations are set
@@ -179,9 +175,13 @@ export default function App() {
     }, [locationData, activeMain])
     // update background sky color to match time/sun position
     useEffect(() => {
-        let sunrise = sunTimes.current.rise
-        let sunset = sunTimes.current.set
-        
+        if (sunTimes.current.rise === undefined) {
+            setSkyClass(skyClass ?? 'day')
+            return
+        }
+        let sunrise = sunTimes.current.rise.tz(dtTz)
+        let sunset = sunTimes.current.set.tz(dtTz)
+
         let sky = 'day'
         if (dt !== undefined && sunset !== undefined && sunrise !== undefined) {
             let set = sunset
@@ -192,21 +192,27 @@ export default function App() {
                 .set('year', dt.year())
                 .set('month', dt.month())
                 .set('date', dt.date())
+            let start = dt
+                .set('hour', 0)
+                .set('minute', 0)
+                .set('second', 0)
             const times = {
-                dawn: rise,
-                day: rise.add(30, 'minutes'),
-                dusk: set,
-                night: set.add(1, 'hour')
+                start: start,
+                dawn:  rise,
+                day:   rise.add(30, 'minutes'),
+                dusk:  set,
+                night: set.add(1, 'hour'),
+                end:   start.add(1, 'day').subtract(1, 'millisecond')
             }
 
-            //times: (night)  >  dawn  >  day >  dusk  >  night  >  (dawn)
-            //set  :          night    dawn   day      dusk      night
-            if (dt.isBetween(times.night.subtract(1, 'day'), times.dawn)) {sky = 'night'}
-            else if (dt.isBetween(times.dawn, times.day)) {sky = 'dawn'}
-            else if (dt.isBetween(times.day, times.dusk)) {sky = 'day'}
+            //times: start  >  dawn  >  day >  dusk  >  night  >  end
+            //set  :        night    dawn   day      dusk      night
+            if      (dt.isBetween(times.start, times.dawn)) {sky = 'night'}
+            else if (dt.isBetween(times.dawn, times.day))   {sky = 'dawn'}
+            else if (dt.isBetween(times.day, times.dusk))   {sky = 'day'}
             else if (dt.isBetween(times.dusk, times.night)) {sky = 'dusk'}
-            else if (dt.isBetween(times.night, times.dawn.add(1, 'day'))) {sky = 'night'}
-            else {sky = 'day'}
+            else if (dt.isBetween(times.night, times.end))  {sky = 'night'}
+            // else: continue using previous value
         }
         setSkyClass(sky)
     }, [dt])
@@ -221,7 +227,6 @@ export default function App() {
                 tabs={{
                     classAppend: {
                         root: "container",
-                        left: "tabs__list--row"
                     },
                     left: {
                         0: {
@@ -229,6 +234,7 @@ export default function App() {
                             type: 'tab-alt',
                             alt: <WeatherTab location={locationData[0]} />,
                             component: <Weather locations={locationData} data={weatherData}/>,
+                            classAppend: "current__tab",
                             onActive: toggleModifyModal,
                         },
                         1: {
@@ -236,19 +242,25 @@ export default function App() {
                             type: 'tab-alt',
                             alt: <WeatherTab location={locationData[1]} />,
                             component: <Weather locations={locationData} data={weatherData}/>,
+                            classAppend: "current__tab",
                             onActive: toggleModifyModal
                         },
                         2: {
-                            isHidden: Object.entries(locationData[2]).length === 0 ? true : false,
+                            isHidden: Object.entries(locationData[2]).length === 0,
                             type: 'tab-alt',
                             alt: <WeatherTab location={locationData[2]} />,
                             component: <Weather locations={locationData} data={weatherData}/>,
+                            classAppend: "current__tab",
                             onActive: toggleModifyModal
                         },
                         add: {
                             isHidden: JSON.stringify(locationData) === "[{},{},{}]" || !JSON.stringify(locationData).includes("{}"),
                             type: 'basic',
-                            component: <button onClick={toggleAddModal}>+</button>
+                            component: (
+                                <button className="add" onClick={toggleAddModal}>
+                                    <img className="add__img" src={IMAGES.add} alt="add button" />
+                                </button>
+                            )
                         }
                     },
                     right: {
@@ -256,11 +268,11 @@ export default function App() {
                             isHidden: JSON.stringify(locationData) === "[{},{},{}]",
                             type: 'basic',
                             component: (
-                                <>
-                                    <p>{dtFormat('dddd LL')}</p>
-                                    <h2>{dtFormat('HH:mm:ss')}</h2>
-                                    <p>{dtTz}</p>
-                                </>
+                                <div className="clock">
+                                    <p className="clock__date">{dtFormat('dddd LL')}</p>
+                                    <p className="clock__time">{dtFormat('h:mm a')}</p>
+                                    {/* <p className="clock__tz">{dtTz} ({dtOffset >= 0 ? '+' : '-'}{dtOffset})</p> */}
+                                </div>
                             ),
                         }
                     }
@@ -274,18 +286,20 @@ export default function App() {
                     tabs={{
                         initial: 'daily',
                         classAppend: {
-                            root: "container",
+                            root: `container`,
                         },
                         left: {
                             daily: {
                                 type: 'tab-alt',
                                 alt: "Daily",
                                 component: <WeatherDaily locations={locationData} data={weatherData} datetime={dt}/>,
+                                classAppend: "daily__tab"
                             },
                             hourly: {
                                 type: 'tab-alt',
                                 alt: "Hourly",
-                                component: <WeatherHourly locations={locationData} data={weatherData} datetime={dt}/>
+                                component: <WeatherHourly locations={locationData} data={weatherData} datetime={dt}/>,
+                                classAppend: "hourly__tab"
                             }
                         }
                     }}
@@ -298,26 +312,24 @@ export default function App() {
                     activeTab={activeModify}
                     setActiveTab={setActiveModify}
                     tabs={{
-                        shared: {
-                            end: <button onClick={toggleModifyModal}>cancel</button>
-                        },
                         right: {
                             change: {
                                 type: 'tab',
                                 component: (
                                     <div className="select select--modify">
                                         <h2 className="select__header">Change Location?</h2>
-                                        <LocationSearch data={locationData} set={(x) => updateLocationData(activeMain, x)} toggleModal={toggleModifyModal}/>
+                                        <LocationSearch data={locationData} set={(x) => {updateLocationData(Number(activeMain), x)}} toggleModal={toggleModifyModal} includeCancel={true}/>
                                     </div>
                                 ),
+                                classAppend: "select__tab"
                             },
                             delete: {
                                 isDisabled: JSON.stringify(locationData).endsWith(",{},{}]"),
                                 type: 'tab',
                                 component: (
-                                    <div>
-                                        <h2>Stop Forecasting this location?</h2>
-                                        <button 
+                                    <div className="delete">
+                                        <h2 className="delete__header">Stop Forecasting this location?</h2>
+                                        <button className="btn btn--red"
                                             onClick={() => {
                                                 // move active left (-1) if new active tab has no corresponding data
                                                 if (
@@ -338,9 +350,13 @@ export default function App() {
                                                 // close modal
                                                 toggleModifyModal()
                                             }}
-                                        >Confirm</button>
+                                        >
+                                            confirm
+                                        </button>
+                                        <button className="btn" onClick={toggleModifyModal}>cancel</button>
                                     </div>
                                 ),
+                                classAppend: "delete__tab"
                             }
                         }
                     }}
@@ -364,7 +380,7 @@ export default function App() {
                     />
                     {/* cancel button (don't render if no data currently exists) */}
                     {!(JSON.stringify([...locationData]) === "[{},{},{}]") && 
-                        <button className="select__btn" onClick={toggleAddModal}>cancel</button>
+                        <button className="select__btn btn" onClick={toggleAddModal}>cancel</button>
                     }
                 </div>
             </Modal>
@@ -380,7 +396,7 @@ function Loading() {
         </div>
     )
 }
-function LocationSearch({data, set, toggleModal}) {
+function LocationSearch({data, set, toggleModal, includeCancel}) {
     const inputRef = useRef()
     const [search, setSearch] = useState('')
     const [results, setResults] = useState([])
@@ -400,8 +416,8 @@ function LocationSearch({data, set, toggleModal}) {
     }, [search])
     return (
         <>
-            <div className="select__input">
-                <label htmlFor="select-search">Search</label>
+            <div className="select__search">
+                <label className="select__label" htmlFor="select-search">Search:</label>
                 <input className="select__input"
                         type="text"
                         id="select-search"
@@ -412,47 +428,52 @@ function LocationSearch({data, set, toggleModal}) {
             </div>
             {search.length > 0 &&
                 <ul className="select__list">
-                    {results === 'loading' ? <Loading /> : results.map(result => {
-                        if ([result.name, result.country, result.latitude, result.longitude, result.timezone].includes(undefined)) {
-                            return null
-                        }
-                        return (
-                            <li className="select__item" 
-                                key={`result-${result.name}=${result.id}`}
-                                onClick={() => {
-                                    let location = {
-                                        lat: result.latitude,
-                                        lon: result.longitude,
-                                        timezone: result.timezone,
-                                        name: result.name,
-                                        country: result.country,
-                                        admin: [
+                    {results === 'loading' ? <Loading /> : (results.length === 0 ? <p className="select__empty">No Results Found</p> :
+                            results.map(result => {
+                            if ([result.name, result.country, result.latitude, result.longitude, result.timezone].includes(undefined)) {
+                                return null
+                            }
+                            return (
+                                <li className="select__item" 
+                                    key={`result-${result.name}=${result.id}`}
+                                    onClick={() => {
+                                        let location = {
+                                            lat: result.latitude,
+                                            lon: result.longitude,
+                                            timezone: result.timezone,
+                                            name: result.name,
+                                            country: result.country,
+                                            admin: [
+                                                result.admin1 || null,
+                                                result.admin2 || null,
+                                                result.admin3 || null
+                                            ].filter(x => {return x != null})
+                                        }
+                                        // check if location is already in use
+                                        if (JSON.stringify(data).includes(JSON.stringify(location))) {
+                                            alert("this location is already being forecasted")
+                                            return
+                                        }
+                                        set(location)
+                                        toggleModal()
+                                    }}
+                                >
+                                    <h3>{result.name}, {result.country}</h3>
+                                    <p>
+                                        {[
                                             result.admin1 || null,
                                             result.admin2 || null,
                                             result.admin3 || null
-                                        ].filter(x => {return x != null})
-                                    }
-                                    // check if location is already in use
-                                    if (JSON.stringify(data).includes(JSON.stringify(location))) {
-                                        alert("this location is already being forecasted")
-                                        return
-                                    }
-                                    set(location)
-                                    toggleModal()
-                                }}
-                            >
-                                <h3>{result.name}, {result.country}</h3>
-                                <p>
-                                    {[
-                                        result.admin1 || null,
-                                        result.admin2 || null,
-                                        result.admin3 || null
-                                    ].filter(x => {return x != null}).join(", ")}
-                                </p>
-                            </li>
-                        )
-                    })}
+                                        ].filter(x => {return x != null}).join(", ")}
+                                    </p>
+                                </li>
+                            )
+                        })
+                    )}
                 </ul>
+            }
+            {includeCancel &&
+                <button className="btn" onClick={toggleModal}>cancel</button>
             }
         </>
     )
@@ -626,7 +647,7 @@ function Condition({hideIcon, hideDesc, weathercode, datetime, sunset, sunrise, 
 function WeatherTab({location}) {
     const {lat, lon, name, country, admin} = location
     return (
-        <div>
+        <div className="current__tab-content">
             <h2>{name}, {country}</h2>
             <p>{[...admin].join(", ")}</p>
         </div>
@@ -646,14 +667,23 @@ function Weather({locations, data}) {
     return (
         <div className="current">
             <div className="current__top">
-
                 <div className="current__column current__column--temperature">
                     <div className="current__main">
-                        <p className="current__temp">{Math.trunc(main.temperature.current)}<span className="current__temp--small">.{String(main.temperature.current).split(".")[1]}</span><sup>°F</sup></p>
-                        {/* <p className="current__temp">48<span className="current__temp--small">.6</span><sup>°F</sup></p> */}
+                        <p className="current__temp">
+                            {Math.trunc(main.temperature.current)}
+                            {main.temperature.current - Math.trunc(main.temperature.current) > 0 && 
+                                <span>
+                                    .{String(main.temperature.current).split(".")[1]}
+                                </span>
+                            }
+                            <sup>°F</sup>
+                        </p>
                     </div>
                     <div className="current__sub">
-                        <p className="current__hilo">{main.temperature.high} / {main.temperature.low}</p>
+                        <p className="current__temp current__temp--alt">
+                            {((5/9) * (main.temperature.current - 32)).toFixed(1).replace('.0', '')}
+                            <sup>°C</sup>
+                        </p>
                     </div>
                 </div>
 
@@ -672,42 +702,30 @@ function Weather({locations, data}) {
             
             <hr className="current__divider"/>
 
-            <ul className="current__list">
-                <li className="current__item">
+            <ul className="current__stats">
+                <li className="current__stat">
                     <div className="current__stat-icon">
-                        <img src={IMAGES.humidity} alt="humidity icon" />
+                        <img src={IMAGES.temperature} alt="temp icon" />
                     </div>
-                    <p className="current__stat-value">{main.humidity}%</p>
+                    <p className="current__stat-value">{Math.round(main.temperature.high)}<sup>°F</sup> / {Math.round(main.temperature.low)}<sup>°F</sup></p>
                 </li>
-                <li className="current__item">
-                    <div className="current__stat-icon">
-                        <img src={IMAGES.precipitation} alt="precipitation icon" />
-                    </div>
-                    <p className="current__stat-value">{main.precipitation}%</p>
-                </li>
-                <li className="current__item">
-                    <div className="current__stat-icon">
-                        <img src={IMAGES.uv} alt="uv icon" />
-                    </div>
-                    <p className="current__stat-value">{main.uvIndex}/10</p>
-                </li>
-                <li className="current__item">
+                <li className="current__stat">
                     <div className="current__stat-icon">
                         <img src={IMAGES.wind} alt="wind icon" />
                     </div>
                     <p className="current__stat-value">{main.wind.speed} mph {main.wind.direction}</p>
                 </li>
-                <li className="current__item">
+                <li className="current__stat">
                     <div className="current__stat-icon">
                         <img src={IMAGES.sunrise} alt="sunrise icon" />
                     </div>
-                    <p className="current__stat-value">{main.sunrise.format("HH:mm")}</p>
+                    <p className="current__stat-value">{main.sunrise.format("h:mm a")}</p>
                 </li>
-                <li className="current__item">
+                <li className="current__stat">
                     <div className="current__stat-icon">
                         <img src={IMAGES.sunset} alt="sunset icon" />
                     </div>
-                    <p className="current__stat-value">{main.sunset.format("HH:mm")}</p>
+                    <p className="current__stat-value">{main.sunset.format("h:mm a")}</p>
                 </li>
             </ul>
         </div>
@@ -727,12 +745,18 @@ function WeatherDaily({locations, data, datetime}) {
     return (
         <ul className={`daily`}>
             {daily.map((box) => (
-                <div className={`daily__box`} key={`group-daily-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
-                    <h3 className="daily__header daily__header--top">{box.dtObj.format('dddd')}</h3>
-                    <h4 className="daily__header daily__header--bottom">{box.dtObj.format('MM/DD')}</h4>
-                    <Condition iconAppend="daily__condition" hideDesc weathercode={box.condition}/>
-                    <hr className="daily__divider"/>
-                    <p className="daily__temperature">{Math.round(box.temperature.high)}° / {Math.round(box.temperature.low)}°</p>
+                <div className={`daily__cell`} key={`group-daily-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
+                    <div className="daily__box">
+                        <h3 className="daily__header daily__header--top">{box.dtObj.format('dddd')}</h3>
+                        <h4 className="daily__header daily__header--bottom">{box.dtObj.format('MM/DD')}</h4>
+                        <Condition iconAppend="daily__condition" hideDesc weathercode={box.condition}/>
+                        
+                        <hr className="daily__divider"/>
+
+                        <div className="daily__stats">
+                            <p className="daily__temperature">{Math.round(box.temperature.high)}° / {Math.round(box.temperature.low)}°</p>
+                        </div>
+                    </div>
                 </div>
             ))}
         </ul>
@@ -755,18 +779,29 @@ function WeatherHourly({locations, data, datetime}) {
     return (
         <ul className={`hourly`}>
             {hourly.map((box) => (
-                <div className="hourly__cell">
-                    <div className={`hourly__box`} key={`group-hourly-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
-                        <h3 className="hourly__header hourly__header--top">{box.dtObj.format('hh:mm a')}</h3>
+                <div className="hourly__cell" key={`group-hourly-${box.dtObj.format('YYYY-MM-DD/HH:mm:ss')}`}>
+                    <div className={`hourly__box`}>
+                        <h3 className="hourly__header hourly__header--top">{box.dtObj.format('h:mm a')}</h3>
                         <Condition iconAppend="hourly__condition" hideDesc weathercode={box.condition} datetime={box.dtObj} sunrise={box.sunrise} sunset={box.sunset}/>
                         <hr className="hourly__divider"/>
-                        <div className="hourly__stat">
-                            <img src={IMAGES.temperature} alt="thermometer icon" />
-                            <p className="hourly__temperature">{Math.round(box.temperature)}°F</p>
-                        </div>
-                        <div className="hourly__stat">
-                            <img src={IMAGES.humidity} alt="humidity icon" />
-                            <p>{box.humidity}%</p>
+
+                        <div className="hourly__stats">
+                            <div className="hourly__stat">
+                                <img src={IMAGES.temperature} alt="thermometer icon" />
+                                <p className="hourly__temperature">{Math.round(box.temperature)}°F</p>
+                            </div>
+                            <div className="hourly__stat">
+                                <img src={IMAGES.humidity} alt="humidity icon" />
+                                <p>{box.humidity}%</p>
+                            </div>
+                            <div className="hourly__stat">
+                                <img src={IMAGES.precipitation} alt="precipitation icon" />
+                                <p>{box.precipitation}%</p>
+                            </div>
+                            <div className="hourly__stat">
+                                <img src={IMAGES.uv} alt="UV index icon" />
+                                <p>{Math.round(box.uvIndex)} / 10</p>
+                            </div>
                         </div>
                     </div>
                 </div>

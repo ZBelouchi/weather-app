@@ -22,6 +22,7 @@ import sunset from "../assets/stat-icons/sunset.png"
 import temperature from "../assets/stat-icons/temperature.png"
 
 import loading from "../assets/ui/loading.gif"
+import add from "../assets/ui/add.png"
 
 const IMAGES = {
     cloud: cloud,
@@ -45,7 +46,8 @@ const IMAGES = {
     sunrise: sunrise,
     sunset: sunset,
     temperature: temperature,
-    loading: loading
+    loading: loading,
+    add: add
 }
 
 export default IMAGES
