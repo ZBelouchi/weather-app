@@ -396,6 +396,16 @@ function Loading() {
         </div>
     )
 }
+function ErrorFallback({error, classAppend}) {
+    return (
+        <div className="error">
+            <h2 className="error__header">Something went wrong!</h2>
+            <p className="error__subtitle">Try Refreshing or try again at another time</p>
+            <p className="error__info">(error info: {error.name}: {error.message})</p>
+        </div>
+    )
+}
+
 function LocationSearch({data, set, toggleModal, includeCancel}) {
     const inputRef = useRef()
     const [search, setSearch] = useState('')
@@ -405,15 +415,68 @@ function LocationSearch({data, set, toggleModal, includeCancel}) {
         inputRef.current.focus()
     }, [])
     useEffect(() => {
-        setResults('loading')
+        setResults(['loading'])
         fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${search}&count=100`, {method: 'GET'})
         .then(res => res.json())
         .then(json => {
             console.log("made call to geocoding API");
             setResults(json.results || [])
         })
-        .catch(err => console.log(err))
+        .catch(err => setResults(['error', err]))
     }, [search])
+
+    let returnedList = null
+    if (results.length === 0) returnedList = <p className="select__empty">No Results Found</p>
+    switch (results[0]) {
+        case 'loading':
+            returnedList = <Loading />
+            break
+        case 'error':
+            returnedList = <ErrorFallback error={results[1]} />
+            break
+        default:
+            returnedList = results.map(result => {
+                if ([result.name, result.country, result.latitude, result.longitude, result.timezone].includes(undefined)) {
+                    return null
+                }
+                return (
+                    <li className="select__item" 
+                        key={`result-${result.name}=${result.id}`}
+                        onClick={() => {
+                            let location = {
+                                lat: result.latitude,
+                                lon: result.longitude,
+                                timezone: result.timezone,
+                                name: result.name,
+                                country: result.country,
+                                admin: [
+                                    result.admin1 || null,
+                                    result.admin2 || null,
+                                    result.admin3 || null
+                                ].filter(x => {return x != null})
+                            }
+                            // check if location is already in use
+                            if (JSON.stringify(data).includes(JSON.stringify(location))) {
+                                alert("this location is already being forecasted")
+                                return
+                            }
+                            set(location)
+                            toggleModal()
+                        }}
+                    >
+                        <h3>{result.name}, {result.country}</h3>
+                        <p>
+                            {[
+                                result.admin1 || null,
+                                result.admin2 || null,
+                                result.admin3 || null
+                            ].filter(x => {return x != null}).join(", ")}
+                        </p>
+                    </li>
+                )
+            })
+    }
+
     return (
         <>
             <div className="select__search">
@@ -426,52 +489,9 @@ function LocationSearch({data, set, toggleModal, includeCancel}) {
                         onChange={e => setSearch(e.target.value)}
                     />
             </div>
-            {search.length > 0 &&
-                <ul className="select__list">
-                    {results === 'loading' ? <Loading /> : (results.length === 0 ? <p className="select__empty">No Results Found</p> :
-                            results.map(result => {
-                            if ([result.name, result.country, result.latitude, result.longitude, result.timezone].includes(undefined)) {
-                                return null
-                            }
-                            return (
-                                <li className="select__item" 
-                                    key={`result-${result.name}=${result.id}`}
-                                    onClick={() => {
-                                        let location = {
-                                            lat: result.latitude,
-                                            lon: result.longitude,
-                                            timezone: result.timezone,
-                                            name: result.name,
-                                            country: result.country,
-                                            admin: [
-                                                result.admin1 || null,
-                                                result.admin2 || null,
-                                                result.admin3 || null
-                                            ].filter(x => {return x != null})
-                                        }
-                                        // check if location is already in use
-                                        if (JSON.stringify(data).includes(JSON.stringify(location))) {
-                                            alert("this location is already being forecasted")
-                                            return
-                                        }
-                                        set(location)
-                                        toggleModal()
-                                    }}
-                                >
-                                    <h3>{result.name}, {result.country}</h3>
-                                    <p>
-                                        {[
-                                            result.admin1 || null,
-                                            result.admin2 || null,
-                                            result.admin3 || null
-                                        ].filter(x => {return x != null}).join(", ")}
-                                    </p>
-                                </li>
-                            )
-                        })
-                    )}
-                </ul>
-            }
+            <ul className="select__list">
+                {returnedList}
+            </ul>
             {includeCancel &&
                 <button className="btn" onClick={toggleModal}>cancel</button>
             }
@@ -655,13 +675,16 @@ function WeatherTab({location}) {
 }
 function Weather({locations, data}) {
     if (JSON.stringify(locations) === "[{},{},{}]") return null
-    if (data === null | data === undefined) return <div className="current"><Loading /></div>
+    if (data === null | data === undefined) return (
+        <div className="current">
+            <Loading />
+        </div>
+    )
     // if (true) return <div className="current"><Loading /></div>
     if (data instanceof Error) return (
-        <>
-            <h2>Something went wrong!</h2>
-            <p>{data.name}: {data.message}</p>
-        </>
+        <div className="current">
+            <ErrorFallback error={data} />
+        </div>
     )
     const main = data.main
     return (
@@ -733,13 +756,16 @@ function Weather({locations, data}) {
 }
 function WeatherDaily({locations, data, datetime}) {
     if (JSON.stringify(locations) === "[{},{},{}]") return null
-    if (data === null | data === undefined) return <div className="daily"><Loading /></div>
+    if (data === null | data === undefined) return (
+        <div className="daily">
+            <Loading />
+        </div>
+    )
     // if (true) return <div className="daily"><Loading /></div>
     if (data instanceof Error) return (
-        <>
-            <h2>Something went wrong!</h2>
-            <p>{data.name}: {data.message}</p>
-        </>
+        <div className="daily">
+            <ErrorFallback error={data} />
+        </div>
     )
     const daily = data.daily
     return (
@@ -764,12 +790,15 @@ function WeatherDaily({locations, data, datetime}) {
 }
 function WeatherHourly({locations, data, datetime}) {
     if (JSON.stringify(locations) === "[{},{},{}]") return null
-    if (data === null | data === undefined) return <div className="hourly"><Loading /></div>
+    if (data === null | data === undefined) return (
+        <div className="hourly">
+            <Loading />
+        </div>
+    )
     if (data instanceof Error) return (
-        <>
-            <h2>Something went wrong!</h2>
-            <p>{data.name}: {data.message}</p>
-        </>
+        <div className="hourly">
+            <ErrorFallback error={data} />
+        </div>
     )
     // cut list to only x hours after present
     const hourly = data.hourly.filter((hour) => {

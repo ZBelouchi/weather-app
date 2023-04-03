@@ -294,6 +294,10 @@ hr
     &__stat-value
         align-self: center
         width: fit-content
+    &__error
+        min-height: 20em
+        @include blurred-overlay($base-color: $blue)
+        padding: 1em
 
 // Weather Groups      
 .daily, .hourly
@@ -347,7 +351,6 @@ hr
             margin-right: 0.3em
         p
     
-
 // Add
 .add
     background: transparent
@@ -382,3 +385,12 @@ hr
         img
             width: 5em
             height: 5em
+
+// Error
+.error
+    font-size: 1.5rem
+    @include center
+    &__header
+    &__subtitle
+    &__info
+        font-size: 0.8em
