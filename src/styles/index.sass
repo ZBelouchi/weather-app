@@ -1,27 +1,25 @@
 @use './partials/breakpoints' as *
 @use './partials/mixins' as *
 @use './partials/variables' as *
-@use './partials/debug' as *
 
 *, *::before, *::after
     box-sizing: border-box
     margin: 0
 
 html
-    font-size: 10px
+    font: 10px $regular
+    color: $white
+    text-align: center
+    height: 100%
     @include sm
         font-size: 12px
     @include md
         font-size: 16px
-    color: $white
-    font-family: $regular
-    text-align: center
-    height: 100%
 
 * //scrollbar
     // Firefox
-    scrollbar-color: transparent transparentize($black, 0.65)
     scrollbar-width: 0.65em
+    scrollbar-color: transparent transparentize($black, 0.65)
     &:hover
         scrollbar-color: transparentize($black, 0.85) transparentize($black, 0.65)
         
@@ -34,48 +32,52 @@ html
         &:hover
             background-color: transparentize($black, 0.85)
     &::-webkit-scrollbar-thumb
-        background-color: transparentize($black, 0.65)
         border-radius: 8px
+        background-color: transparentize($black, 0.65)
 
 img
     max-width: 100%  
-
 ul
-    list-style: none
     padding: 0
-li
+    list-style: none
+hr
+    width: 60%
+    margin: 0.5em auto
+    border-radius: 8px
+    background-color: $white
 
 button
-    background: $teal
-    $color: $black
-    border-color: darken($teal, 15)
     font-family: $regular
-.btn
+    color: $black
+    border-color: darken($teal, 15)
     background: $teal
+.btn
+    font-size: 1.5rem
     $color: $black
+    margin: 0.4em
     border-color: darken($teal, 15)
     border-radius: 8px
-    font-size: 1.5rem
-    padding: 0.1em 0.5em
-    margin: 0.4em
+    padding: 0em 0.5em
+    background: $teal
     &:hover
         background-color: lighten($teal, 8)
     &:active
         background-color: darken($teal, 15)
     &--red
         color: white
-        background-color: $red
         border-color: darken($red, 0.15)
+        background-color: $red
         &:hover
             background-color: lighten($red, 8)
         &:active
             background-color: darken($red, 15)
 
-hr
-    width: 60%
-    margin: 0.5em auto
-    border-radius: 8px
-    background-color: $white
+// Universal
+.container
+    width: 90%
+    max-width: 1100px
+    margin: auto
+    padding: 1em
 
 // Weather (Root)
 .weather
@@ -84,7 +86,6 @@ hr
 // Sky Background
 .sky
     position: relative
-    transition: background 1s ease
     &--day
         background-image: $day
     &--dusk 
@@ -94,19 +95,12 @@ hr
     &--dawn
         background-image: $dawn
 
-// Universal
-.container
-    width: 90%
-    max-width: 1100px
-    margin: auto
-    padding: 1em
-
 // Tabs
 .tabs
     &__header
         display: flex
-        justify-content: space-between
         flex-direction: column-reverse
+        justify-content: space-between
         @include md
             flex-direction: row
 
@@ -115,72 +109,94 @@ hr
         &--left
             .tabs__tab:first-of-type
                 border-left: none
-        &--center
-        &--right
         
     &__tab
-        color: $white
-        font-weight: 600
         font-size: 1rem
+        font-weight: 600
+        color: $white
+        border-width: 1px
         padding: 0.4em
         z-index: 2
-        border-width: 1px
         &--active
-            z-index: 3
             border-bottom: none
+            z-index: 3
         &--basic
             font-weight: normal
-            z-index: 0
             display: flex
             align-items: center
+            z-index: 0
         &:disabled
             color: transparentize($white, .75)
-            background-color: $darkblue
             border-color: $darkblue
+            background-color: $darkblue
         
     &__body
+        border-top: none
         position: relative
         z-index: 1
-        border-top: none
+    
+// Add
+.add
+    width: 5em
+    height: 5em
+    border: none
+    background: transparent
+    &:hover
+        background: transparent
+    img
+        opacity: 0.90
+        
+// Clock
+.clock
+    border-radius: 8px
+    padding: 1em
+    align-self: end
+    @include blurred-overlay($darkblue)
+    min-width: 10em
+    &__date
+        font-size: 1.2rem
+        font-weight: bold
+    &__time
+        font-size: 1.8rem
+    &__tz
+        font-weight: normal
 
 // Modal
 .modal
     &__box
+        width: 60%
+        max-width: 600px
+        z-index: 1001
         position: fixed
         top: 50%
         left: 50%
         translate: -50% -50%
-        z-index: 1001
-        // background-color: $blue
-        width: 60%
-        max-width: 600px
     &__overlay
+        z-index: 1000
         position: fixed
         top: 0
         left: 0
         right: 0
         bottom: 0
-        // background-color: #00000098
         @include blurred-overlay($base-color: #1a1a1d)
-        z-index: 1000
 
 // Location Select and Delete Modals
 .select, .delete
-    background-color: $blue
     color: $white
+    min-height: 10.5em
+    border-radius: 8px 0 8px 8px
     padding: 1em
-    min-height: 8em
+    background-color: $blue
     &__tab
-        background-color: $lightblue
         border-color: lighten($lightblue, 15)
+        background-color: $lightblue
         &.tabs__tab--active
-            background-color: $blue
             border-color: lighten($blue, 15)
-        &.tabs__tab--basic
-    &--add
-    &--modify
+            background-color: $blue
 
     &__header
+    .delete__header
+        margin-bottom: 0.5em
     &__search
         margin: 0.5em
         display: flex
@@ -188,18 +204,18 @@ hr
         width: 15%
     &__input
         width: 100%
-
+        
     &__list
         color: $black
-        background: darken($teal, 5)
         height: 500px
-        overflow-y: scroll
         border: 3px inset $black
         padding: 0.5em
+        background: darken($teal, 5)
+        overflow-y: scroll
     &__item
         border: 2px outset darken($teal, 10)
-        background: lighten($tan, 5)
         padding: 0.5em
+        background: lighten($tan, 5)
         &:hover
             background: lighten($teal, 8)
         &:active
@@ -209,12 +225,10 @@ hr
 // Condition
 .condition
     width: fit-content
-    &__description
 .icon
-    // outline: 2px solid magenta
-    position: relative
     width: 5em
     height: 5em
+    position: relative
     &--main
         width: 7em
         height: 7em
@@ -226,23 +240,23 @@ hr
 // Current Weather
 .current
     min-height: 20em
-    @include blurred-overlay($base-color: $blue)
+    border-radius: 0 8px 8px 8px 
     padding: 1em
+    @include blurred-overlay($base-color: $blue)
     &__tab
-        @include blurred-overlay($base-color: $lightblue)
         border-color: transparentize(lighten($lightblue, 15), 0.25)
+        @include blurred-overlay($base-color: $lightblue)
         &.tabs__tab--active
-            @include blurred-overlay($base-color: $blue)
             border-color: transparentize(lighten($blue, 15), 0.25)
-        &.tabs__tab--basic
+            @include blurred-overlay($base-color: $blue)
     &__tab-content
         p
             font-weight: normal
     &__top
+        width: 100%
+        margin: auto
         display: flex
         justify-content: space-between
-        margin: auto
-        width: 100%
         @include sm
             width: 65%
     &__column
@@ -255,7 +269,6 @@ hr
             display: flex
             flex-direction: column
             align-self: center
-        &--condition
     &__main
         min-height: 7em
         display: flex
@@ -263,8 +276,8 @@ hr
         font-size: 1.2rem
 
     &__temp
-        align-self: end
         font-size: 5.2rem
+        align-self: end
         sup
             font-size: 0.5em
         span
@@ -273,18 +286,16 @@ hr
             font-size: 1.2rem
             sup
                 font-size: 0.70em
-    &__divider
     &__stats
         font-size: 1.2rem
         display: flex
         flex-wrap: wrap
     &__stat
-        display: flex
-        flex-direction: column
         width: 50%
-        align-items: center
         margin: auto
+        display: flex
         flex-direction: row
+        align-items: center
         &:nth-last-child(even)
             flex-direction: row-reverse
     &__stat-icon
@@ -292,37 +303,37 @@ hr
         height: 2.8em
         margin: 0.2em
     &__stat-value
-        align-self: center
         width: fit-content
+        align-self: center
     &__error
         min-height: 20em
-        @include blurred-overlay($base-color: $blue)
         padding: 1em
+        @include blurred-overlay($base-color: $blue)
 
 // Weather Groups      
 .daily, .hourly
     min-height: 12em
-    display: flex
-    overflow-x: scroll
     padding: 0.5em
+    display: flex
     @include blurred-overlay($base-color: $blue)
+    overflow-x: scroll
     &__tab
-        @include blurred-overlay($base-color: $lightblue)
         border-color: transparentize(lighten($lightblue, 15), 0.25)
+        @include blurred-overlay($base-color: $lightblue)
         &.tabs__tab--active
-            @include blurred-overlay($base-color: $blue)
             border-color: transparentize(lighten($blue, 15), 0.25)
-        &.tabs__tab--basic
+            @include blurred-overlay($base-color: $blue)
     &__box
+        border: 2px outset gray
+        border-radius: 8px
+        padding: 0.5em
         display: flex
         flex-direction: column
         align-items: center 
-        padding: 0.5em
-        border: 2px outset gray
-        border-radius: 8px
     &__cell
-        @include blurred-overlay($blue)
+        border-radius: 8px
         display: inline-block
+        @include blurred-overlay($blue)
         & + &
             margin-left: 0.2em 
     .daily__cell
@@ -330,52 +341,19 @@ hr
         min-width: 8em
     .hourly__cell
         min-width: 9.27em
-    &__header
-        &--top
-        &--bottom
-    &__condition
-    &__divider
     &__stats
-        // outline: 2px solid lime
         display: flex
         flex-wrap: wrap
     &__stat
-        // outline: 2px solid blue
-        display: flex
         width: 50%
         margin: auto
+        display: flex
         img
-            // outline: 2px solid cyan
             width: 1em
             height: 1em
             margin-right: 0.3em
         p
-    
-// Add
-.add
-    background: transparent
-    border: none
-    width: 5em
-    height: 5em
-    &:hover
-        background: transparent
-    img
-        opacity: 0.90
-        
-// Clock
-.clock
-    @include blurred-overlay($darkblue)
-    border-radius: 8px
-    padding: 1em
-    min-width: 10em
-    align-self: end
-    &__date
-        font-weight: bold
-        font-size: 1.2rem
-    &__time
-        font-size: 1.8rem
-    &__tz
-        font-weight: normal
+
 
 // Loading
 .loading
@@ -390,7 +368,5 @@ hr
 .error
     font-size: 1.5rem
     @include center
-    &__header
-    &__subtitle
     &__info
         font-size: 0.8em

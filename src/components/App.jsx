@@ -12,44 +12,22 @@ import Modal from "./Modal"
 import IMAGES from '../assets/images/images'
 
 export default function App() {
-    const {dt, dtTz, dtTime, dtDate, dtOffset, dtFormat, dtChangeTz} = useDatetime()
-    const sunTimes = useRef({rise: undefined, set: undefined})
-    const [skyClass, setSkyClass] = useState('day')
-    const [modifyModal, toggleModifyModal] = useToggle(false)
-    const [addModal, toggleAddModal] = useToggle(false)
+    // Tabs
     const [activeMain, setActiveMain] = useState(0)
     const [activeGroups, setActiveGroups] = useState(null)
     const [activeModify, setActiveModify] = useState(null)
-
-    const {array: locationData, set: setLocationData, update: updateLocationData, remove: removeLocationData, push: pushLocationData} = useArray([{},{},{}])
-    // const {array: locationData, set: setLocationData, update: updateLocationData, remove: removeLocationData, push: pushLocationData} = useArray([
-    //     {
-    //         lat: 39.44034,
-    //         lon: -84.36216,
-    //         timezone: "America/New_York",
-    //         name: "Gooberville",
-    //         country: "United States",
-    //         admin: ['Somewhere', 'Here', 'A Township'],
-    //     },
-    //     {
-    //         lat:  44.91656,
-    //         lon: 7.46719,
-    //         timezone: "Europe/Rome",
-    //         name: "Skf Industrie S.P.A.",
-    //         country: "Italy",
-    //         admin: ['Piedmont', 'Turin', 'Airasca'],
-    //     },
-    //     {
-    //         // lat: 3.07014,
-    //         // lon: 27.48309,
-    //         // timezone: "Africa/Lubumbashi",
-    //         // name: "We",
-    //         // country: "DR Congo",
-    //         // admin: ['Bas-Uele', 'Poko'],
-    //     }
-    // ])
+    // Modals
+    const [modifyModal, toggleModifyModal] = useToggle(false)
+    const [addModal, toggleAddModal] = useToggle(false)
+    // Time
+    const {dt, dtTz, dtFormat, dtChangeTz} = useDatetime()
+    const sunTimes = useRef({rise: undefined, set: undefined})
+    const [skyClass, setSkyClass] = useState('day')
+    // Data
+    const {array: locationData, update: updateLocationData, remove: removeLocationData, push: pushLocationData} = useArray([{},{},{}])
     const weatherData = useAsyncCached(
         () => {
+            // exit if location data is empty
             if (JSON.stringify(locationData) === "[{},{},{}]") {
                 return Promise.reject(new Error(`Coordinates not available in slot ${activeMain}`))
             }
@@ -83,15 +61,13 @@ export default function App() {
             return fetch(url, {method: 'GET'})
                 .then(res => res.json())
                 .then(json => {
-                    console.log("made call to forecast API");
-                    // console.log(json)
-
+                    // sunrise/sunset
                     let sunrises = json.daily.sunrise
                     sunTimes.current.rise = dayjs(sunrises[0], "YYYY-MM-DDTHH:mm").tz(dtTz, true)
-                    
                     let sunsets = json.daily.sunset
                     sunTimes.current.set = dayjs(sunsets[0], "YYYY-MM-DDTHH:mm").tz(dtTz, true)
 
+                    // get and format hourly data
                     let hourlyData = json.hourly.time.map((hour, index) => {
                         let sunIndex = sunrises.map(
                             time => time.slice(0,10)
@@ -121,7 +97,6 @@ export default function App() {
                     let index = Math.round(((degree %= 360) < 0 ? degree + 360 : degree) / 45) % 8;
                     let windDirection = directions[index];
 
-                    // return {main: json}
                     return {
                         main: {
                             timeZone: json.timezone,
@@ -135,9 +110,9 @@ export default function App() {
                                 speed: json.current_weather.windspeed,
                                 direction: windDirection
                             },
-                            humidity: 0,        // new
-                            uvIndex: 0,         // new
-                            precipitation: 0,   // new
+                            humidity: 0,
+                            uvIndex: 0,
+                            precipitation: 0,
                             dtObj: dt,
                             sunrise: dayjs(sunrises[0], "YYYY-MM-DDTHH:mm").tz(dtTz, true),
                             sunset: dayjs(sunsets[0], "YYYY-MM-DDTHH:mm").tz(dtTz, true),
@@ -159,7 +134,6 @@ export default function App() {
                     }
                 })
         },
-        // [locationData, activeMain]
         [locationData, activeMain, dt]
     )
 
@@ -175,7 +149,8 @@ export default function App() {
     }, [locationData, activeMain])
     // update background sky color to match time/sun position
     useEffect(() => {
-        if (sunTimes.current.rise === undefined) {
+        // exit if suntimes are undefined
+        if (sunTimes.current.rise === undefined || dt === undefined) {
             setSkyClass(skyClass ?? 'day')
             return
         }
@@ -183,42 +158,39 @@ export default function App() {
         let sunset = sunTimes.current.set.tz(dtTz)
 
         let sky = 'day'
-        if (dt !== undefined && sunset !== undefined && sunrise !== undefined) {
-            let set = sunset
-                .set('year', dt.year())
-                .set('month', dt.month())
-                .set('date', dt.date())
-            let rise = sunrise
-                .set('year', dt.year())
-                .set('month', dt.month())
-                .set('date', dt.date())
-            let start = dt
-                .set('hour', 0)
-                .set('minute', 0)
-                .set('second', 0)
-            const times = {
-                start: start,
-                dawn:  rise,
-                day:   rise.add(30, 'minutes'),
-                dusk:  set,
-                night: set.add(1, 'hour'),
-                end:   start.add(1, 'day').subtract(1, 'millisecond')
-            }
-
-            //times: start  >  dawn  >  day >  dusk  >  night  >  end
-            //set  :        night    dawn   day      dusk      night
-            if      (dt.isBetween(times.start, times.dawn)) {sky = 'night'}
-            else if (dt.isBetween(times.dawn, times.day))   {sky = 'dawn'}
-            else if (dt.isBetween(times.day, times.dusk))   {sky = 'day'}
-            else if (dt.isBetween(times.dusk, times.night)) {sky = 'dusk'}
-            else if (dt.isBetween(times.night, times.end))  {sky = 'night'}
-            // else: continue using previous value
+        let set = sunset
+            .set('year', dt.year())
+            .set('month', dt.month())
+            .set('date', dt.date())
+        let rise = sunrise
+            .set('year', dt.year())
+            .set('month', dt.month())
+            .set('date', dt.date())
+        let start = dt
+            .set('hour', 0)
+            .set('minute', 0)
+            .set('second', 0)
+        const times = {
+            start: start,
+            dawn:  rise.subtract(30, 'minutes'),
+            day:   rise,
+            dusk:  set.subtract(1, 'hour'),
+            night: set,
+            end:   start.add(1, 'day').subtract(1, 'millisecond')
         }
+
+        //times: start  >  dawn  >  day >  dusk  >  night  >  end
+        //set  :        night    dawn   day      dusk      night
+        if      (dt.isBetween(times.start, times.dawn)) {sky = 'night'}
+        else if (dt.isBetween(times.dawn, times.day))   {sky = 'dawn'}
+        else if (dt.isBetween(times.day, times.dusk))   {sky = 'day'}
+        else if (dt.isBetween(times.dusk, times.night)) {sky = 'dusk'}
+        else if (dt.isBetween(times.night, times.end))  {sky = 'night'}
+        // else: continue using previous value
         setSkyClass(sky)
     }, [dt])
 
     return (
-        // <main className={`sky--${skyClass}`}>
         <main className={`weather sky--${skyClass}`}>
             {/* Current Forecast */}
             <Tabs 
@@ -269,9 +241,8 @@ export default function App() {
                             type: 'basic',
                             component: (
                                 <div className="clock">
-                                    <p className="clock__date">{dtFormat('dddd LL')}</p>
+                                    <p className="clock__date">{dtFormat('dddd, LL')}</p>
                                     <p className="clock__time">{dtFormat('h:mm a')}</p>
-                                    {/* <p className="clock__tz">{dtTz} ({dtOffset >= 0 ? '+' : '-'}{dtOffset})</p> */}
                                 </div>
                             ),
                         }
@@ -396,7 +367,7 @@ function Loading() {
         </div>
     )
 }
-function ErrorFallback({error, classAppend}) {
+function ErrorFallback({error}) {
     return (
         <div className="error">
             <h2 className="error__header">Something went wrong!</h2>
@@ -407,75 +378,103 @@ function ErrorFallback({error, classAppend}) {
 }
 
 function LocationSearch({data, set, toggleModal, includeCancel}) {
-    const inputRef = useRef()
     const [search, setSearch] = useState('')
     const [results, setResults] = useState([])
+    const inputRef = useRef()
 
+    // generate results element content by status of search
+    const resultsList = () => {
+        // return nothing if search query is empty
+        if (search === '') return null
+        // search query filled but no results found
+        if (results.length === 0) return (
+            <ul className="select__list">
+                <p className="select__empty">No Results Found</p>
+            </ul>
+        )
+        switch (results[0]) {
+            // pending state
+            case 'loading':
+                return (
+                    <ul className="select__list">
+                        <Loading />
+                    </ul>
+                )
+                break
+            // error state
+            case 'error':
+                return (
+                    <ul className="select__list">
+                        <ErrorFallback error={results[1]} />
+                    </ul>
+                )
+                break
+            // return results as list items if found
+            default:
+                return (
+                    <ul className="select__list">
+                        {
+                            results.map(result => {
+                                if ([result.name, result.country, result.latitude, result.longitude, result.timezone].includes(undefined)) {
+                                    return null
+                                }
+                                return (
+                                    <li className="select__item" aria-role="button" 
+                                        key={`result-${result.name}=${result.id}`}
+                                        onClick={() => {
+                                            let location = {
+                                                lat: result.latitude,
+                                                lon: result.longitude,
+                                                timezone: result.timezone,
+                                                name: result.name,
+                                                country: result.country,
+                                                admin: [
+                                                    result.admin1 || null,
+                                                    result.admin2 || null,
+                                                    result.admin3 || null
+                                                ].filter(x => {return x != null})
+                                            }
+                                            // check if location is already in use
+                                            if (JSON.stringify(data).includes(JSON.stringify(location))) {
+                                                alert("this location is already being forecasted")
+                                                return
+                                            }
+                                            set(location)
+                                            toggleModal()
+                                        }}
+                                    >
+                                        <h3>{result.name}, {result.country}</h3>
+                                        <p>
+                                            {[
+                                                result.admin1 || null,
+                                                result.admin2 || null,
+                                                result.admin3 || null
+                                            ].filter(x => {return x != null}).join(", ")}
+                                        </p>
+                                    </li>
+                                )
+                            })
+                        }
+                    </ul>
+                )
+                break
+        }
+    }
+    
+    // focus to search bar on mount
     useEffect(() => {
         inputRef.current.focus()
     }, [])
+    // update results when search query changes
     useEffect(() => {
         setResults(['loading'])
         fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${search}&count=100`, {method: 'GET'})
         .then(res => res.json())
         .then(json => {
-            console.log("made call to geocoding API");
             setResults(json.results || [])
         })
         .catch(err => setResults(['error', err]))
     }, [search])
-
-    let returnedList = null
-    if (results.length === 0) returnedList = <p className="select__empty">No Results Found</p>
-    switch (results[0]) {
-        case 'loading':
-            returnedList = <Loading />
-            break
-        case 'error':
-            returnedList = <ErrorFallback error={results[1]} />
-            break
-        default:
-            returnedList = results.map(result => {
-                if ([result.name, result.country, result.latitude, result.longitude, result.timezone].includes(undefined)) {
-                    return null
-                }
-                return (
-                    <li className="select__item" 
-                        key={`result-${result.name}=${result.id}`}
-                        onClick={() => {
-                            let location = {
-                                lat: result.latitude,
-                                lon: result.longitude,
-                                timezone: result.timezone,
-                                name: result.name,
-                                country: result.country,
-                                admin: [
-                                    result.admin1 || null,
-                                    result.admin2 || null,
-                                    result.admin3 || null
-                                ].filter(x => {return x != null})
-                            }
-                            // check if location is already in use
-                            if (JSON.stringify(data).includes(JSON.stringify(location))) {
-                                alert("this location is already being forecasted")
-                                return
-                            }
-                            set(location)
-                            toggleModal()
-                        }}
-                    >
-                        <h3>{result.name}, {result.country}</h3>
-                        <p>
-                            {[
-                                result.admin1 || null,
-                                result.admin2 || null,
-                                result.admin3 || null
-                            ].filter(x => {return x != null}).join(", ")}
-                        </p>
-                    </li>
-                )
-            })
-    }
 
     return (
         <>
@@ -489,9 +488,7 @@ function LocationSearch({data, set, toggleModal, includeCancel}) {
                         onChange={e => setSearch(e.target.value)}
                     />
             </div>
-            <ul className="select__list">
-                {returnedList}
-            </ul>
+            {resultsList()}
             {includeCancel &&
                 <button className="btn" onClick={toggleModal}>cancel</button>
             }
@@ -500,6 +497,7 @@ function LocationSearch({data, set, toggleModal, includeCancel}) {
 }
 
 function Condition({hideIcon, hideDesc, weathercode, datetime, sunset, sunrise, iconAppend, subAppend}) {
+    // key for forecast API weathercodes
     const CONDITIONS = {
         0: {
             description: "Clear Sky",
@@ -614,6 +612,7 @@ function Condition({hideIcon, hideDesc, weathercode, datetime, sunset, sunrise, 
             iconLayers: [IMAGES.darkcloud, IMAGES.lightning, IMAGES.hail]
         },
     }
+    // determine if sun or moon should be used
     let isNighttime = false
     if (datetime !== undefined && sunset !== undefined && sunrise !== undefined) {
         let set = sunset
@@ -627,8 +626,8 @@ function Condition({hideIcon, hideDesc, weathercode, datetime, sunset, sunrise, 
         isNighttime = datetime.isAfter(set.subtract(1, 'day')) && datetime.isBefore(rise) | datetime.isAfter(set)
     }
 
+    // generate layers for weather condition icon
     let layers = []
-
     switch (weathercode) {
         case 0:
             layers.push(isNighttime ? IMAGES.moonClear : IMAGES.sunClear)
@@ -642,6 +641,7 @@ function Condition({hideIcon, hideDesc, weathercode, datetime, sunset, sunrise, 
             layers.push(isNighttime ? IMAGES.moon : IMAGES.sun, ...CONDITIONS[weathercode].iconLayers)
             break
     }
+
     return (
         <>
             {!hideIcon &&
@@ -674,18 +674,21 @@ function WeatherTab({location}) {
     )
 }
 function Weather({locations, data}) {
+    // exit if location data is empty
     if (JSON.stringify(locations) === "[{},{},{}]") return null
+    // loading state
     if (data === null | data === undefined) return (
         <div className="current">
             <Loading />
         </div>
     )
-    // if (true) return <div className="current"><Loading /></div>
+    // error state
     if (data instanceof Error) return (
         <div className="current">
             <ErrorFallback error={data} />
         </div>
     )
+
     const main = data.main
     return (
         <div className="current">
@@ -754,19 +757,22 @@ function Weather({locations, data}) {
         </div>
     )
 }
-function WeatherDaily({locations, data, datetime}) {
+function WeatherDaily({locations, data}) {
+    // exit if location data is empty
     if (JSON.stringify(locations) === "[{},{},{}]") return null
+    // loading state
     if (data === null | data === undefined) return (
         <div className="daily">
             <Loading />
         </div>
     )
-    // if (true) return <div className="daily"><Loading /></div>
+    // error state
     if (data instanceof Error) return (
         <div className="daily">
             <ErrorFallback error={data} />
         </div>
     )
+
     const daily = data.daily
     return (
         <ul className={`daily`}>
@@ -789,17 +795,21 @@ function WeatherDaily({locations, data, datetime}) {
     )
 }
 function WeatherHourly({locations, data, datetime}) {
+    // exit if location data is empty
     if (JSON.stringify(locations) === "[{},{},{}]") return null
+    // loading state
     if (data === null | data === undefined) return (
         <div className="hourly">
             <Loading />
         </div>
     )
+    // error state
     if (data instanceof Error) return (
         <div className="hourly">
             <ErrorFallback error={data} />
         </div>
     )
+
     // cut list to only x hours after present
     const hourly = data.hourly.filter((hour) => {
         return hour.dtObj.isAfter(datetime)
@@ -816,19 +826,19 @@ function WeatherHourly({locations, data, datetime}) {
 
                         <div className="hourly__stats">
                             <div className="hourly__stat">
-                                <img src={IMAGES.temperature} alt="thermometer icon" />
+                                <img src={IMAGES.temperature} alt="thermometer icon" title="temperature" />
                                 <p className="hourly__temperature">{Math.round(box.temperature)}°F</p>
                             </div>
                             <div className="hourly__stat">
-                                <img src={IMAGES.humidity} alt="humidity icon" />
+                                <img src={IMAGES.humidity} alt="humidity icon" title="humidity" />
                                 <p>{box.humidity}%</p>
                             </div>
                             <div className="hourly__stat">
-                                <img src={IMAGES.precipitation} alt="precipitation icon" />
+                                <img src={IMAGES.precipitation} alt="precipitation icon" title="precipitation" />
                                 <p>{box.precipitation}%</p>
                             </div>
                             <div className="hourly__stat">
-                                <img src={IMAGES.uv} alt="UV index icon" />
+                                <img src={IMAGES.uv} alt="UV index icon" title="uv index" />
                                 <p>{Math.round(box.uvIndex)} / 10</p>
                             </div>
                         </div>

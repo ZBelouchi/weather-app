@@ -7,8 +7,8 @@ import ErrorBoundary from './components/ErrorBoundary'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-        {/* <ErrorBoundary fallback={<p>something went wrong</p>} > */}
+        <ErrorBoundary fallback={<p>something went wrong</p>} >
             <App />
-        {/* </ErrorBoundary> */}
+        </ErrorBoundary>
     </React.StrictMode>
 )
