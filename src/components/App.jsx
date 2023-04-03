@@ -9,7 +9,7 @@ import useAsyncCached from "../hooks/useAsyncCached"
 import Tabs from "./Tabs"
 import Modal from "./Modal"
 
-import IMAGES from '../assets/images'
+import IMAGES from '../assets/images/images'
 
 export default function App() {
     const {dt, dtTz, dtTime, dtDate, dtOffset, dtFormat, dtChangeTz} = useDatetime()

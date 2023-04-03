@@ -14,3 +14,7 @@ $day: linear-gradient(#1f64c9, #d6ebfe);
 $dusk : linear-gradient(#123d52, #d03f04);
 $night: linear-gradient(#010914, #05558c);
 $dawn: linear-gradient(#617fd5, #f0a35d);
+
+// fonts
+@font-face {font-family: 'noto-sans-kr-regular'; src: url('../assets/fonts/NotoSansKR/NotoSansKR-Regular.otf');};
+$regular: 'noto-sans-kr-regular';
