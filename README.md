@@ -1,7 +1,7 @@
 # Weather Report
 hosted [here](https://zbelouchi.github.io/weather-app/) via GitHub Pages
 
-a weather forecasting web application built using React JS and bundled with Vite.
+a weather forecasting web application built using React JS and bundled with Vite for my front-end portfolio.
 
 ## Notes:
 * Weather forecasts may not be 100% accurate as the API used only updates every few hours, While not updating in real time, Open-Meteo was the best free weather API I could find for a demo project
